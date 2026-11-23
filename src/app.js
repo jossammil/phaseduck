@@ -966,6 +966,7 @@ function draw() {
   syncAudio();
   state.music = music.settings;
   state.audioHistory = music.history;
+  state.stereoFrames = music.stereoFrames;
   if (state.scene === "rain") Object.assign(state, radarState());
   if (!paused && (state.scene === "music" || composer.has("music"))) state.audioFrames = music.read();
   if (composer.active()) {
@@ -981,8 +982,12 @@ function draw() {
   if (measureFrames) window.dispatchEvent(new Event("phase-frame"));
 }
 function syncAudio() {
-  music.setVisible(visible && !document.hidden &&
-    (composer.active() ? composer.has("music") : state.scene === "music"));
+  const isMusic = composer.active() ? composer.has("music") : state.scene === "music";
+  const showing = visible && !document.hidden && isMusic;
+  const localScope = (settings) => settings.source === "local" && settings.style === "scope";
+  music.setVisible(showing, showing && (composer.active()
+    ? composer.visibleLayers("music").some((layer) => localScope(layer.music))
+    : localScope(music.settings)));
 }
 function resize() {
   const box = stage.getBoundingClientRect();

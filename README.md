@@ -6,6 +6,18 @@ An ambient browser workbench for a spare display. Procedural instruments turn ti
 
 The **browser edition** runs on Windows, Mac and Linux. The optional **Apple silicon Mac companion** adds native jobs, persistent logs and Neovim. The Mac download is ad-hoc signed and has no Apple notarization. Native R jobs use a local installation of R.
 
+## Visualize Safari audio on a Mac
+
+Download and extract the [Apple silicon Mac ZIP](https://github.com/jossammil/phaseduck/releases/latest/download/phaseduck-mac-arm64.zip). Live Safari audio is a preview on macOS 26 or later. Open Terminal in the folder containing the extracted `Phase Deck.app` and run:
+
+```sh
+PHASE_STATE="$HOME/Library/Application Support/Phase Deck Audio Preview" \
+  PHASE_AUDIO_PREVIEW=1 \
+  "./Phase Deck.app/Contents/MacOS/phase-deck" serve --port 4192 --open
+```
+
+Start playing audio in Safari. In the local Phase Deck window, choose **Music Visualizer → Music input → Safari audio → Start capture** and grant system audio permission if asked. Choose **Stereo Scope** as the music aesthetic. When you finish, select **Stop capture** or close the last visible music visualizer.
+
 ## Try it
 
 - Choose **Patch signals** and recall **Rush-hour dunes** to see the January 2024 NYC taxi pickup pattern. Click a ridge to inspect the hourly total.
@@ -27,7 +39,7 @@ Files are read on your device. Saved data layers contain the values or histogram
 2. Drag a layer to move it and use its corner handle to resize it. The layer inspector provides keyboard-accessible position and size fields, opacity, blend mode, and source settings. Use **Bring forward** or **Send backward** to change the stacking order.
 3. Name the composition and select **Save composition**. Reopen it from **Saved compositions** or select **Add to favorites** to use it in the ambient rotation.
 
-For music, open **Music Visualizer → Music input → Open audio file**. Choose Waveform, Radial spectrum, Spectral ribbons, or Spectral history and adjust the palette and sensitivity. Spectral history shows up to 12 seconds of frequency summaries in memory. The music visualizer is also available as a layer. Safari and desktop playback capture are available for testing in the Mac companion’s opt-in audio preview.
+For music, open **Music Visualizer → Music input → Open audio file**. Choose Waveform, Radial spectrum, Spectral ribbons, Spectral history, or Stereo Scope. Spectral history shows up to 12 seconds of frequency summaries in memory. Stereo Scope plots left audio horizontally and right audio vertically. Identical channels produce a rising diagonal. These aesthetics are also available as composition layers.
 
 Choose **Classic**, **Graphite**, or **Phosphor** under **Theme pack** in Music input or in a music layer’s settings. Keep **Theme colors** to use the pack’s colors, or pick a palette independently. Each saved music layer remembers its own pack.
 

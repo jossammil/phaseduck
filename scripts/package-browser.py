@@ -22,6 +22,7 @@ Open http://localhost:4180 in your browser. Stop the server with Ctrl+C.
 Base R, Python and DuckDB are bundled. Imported data stays in your browser.
 Use Explore data for CSV and Parquet, Compose to arrange layers, and Ambient
 display to open a separate window. Music Visualizer can play a local audio file.
+Choose Stereo Scope to plot its left and right audio channels.
 Rain Glass replays bundled radar offline. Latest observation needs internet
 access. Traffic Patterns and Terrain Profiles include bundled observations.
 Use Export 4K still to save an instrument or composition as a PNG.

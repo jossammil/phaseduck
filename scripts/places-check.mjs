@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { extname, resolve } from "node:path";
 import { chromium, webkit } from "playwright-core";
 import { profileTraffic } from "../src/traffic-counts.js";
+import { stereoFixture } from "./stereo-fixture.mjs";
 
 const root = resolve("dist");
 const types = {
@@ -12,12 +13,14 @@ const types = {
   ".json": "application/json", ".png": "image/png", ".svg": "image/svg+xml",
   ".csv": "text/csv", ".wasm": "application/wasm",
 };
+let workletLoads = 0;
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, "http://127.0.0.1");
   const path = resolve(root, "." + url.pathname + (url.pathname.endsWith("/") ? "index.html" : ""));
   try {
     if (!path.startsWith(root + "/")) throw Error("invalid path");
     const file = await readFile(path);
+    if (url.pathname === "/stereo-worklet.js") workletLoads++;
     res.writeHead(200, { "Content-Type": types[extname(path)] || "application/octet-stream" }).end(file);
   } catch {
     res.writeHead(404).end();
@@ -91,6 +94,108 @@ async function saveStill(page, name, orientation) {
   const size = orientation === "portrait" ? [2160, 3840] : [3840, 2160];
   assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], size);
   return png;
+}
+
+function scopeOrientation(pixels, width, height) {
+  const centerX = (width - 1) / 2, centerY = (height - 1) / 2;
+  const limit = Math.min(width, height) * 0.30;
+  let xx = 0, yy = 0, xy = 0, count = 0;
+  for (let y = Math.ceil(centerY - limit); y <= centerY + limit; y++) {
+    for (let x = Math.ceil(centerX - limit); x <= centerX + limit; x++) {
+      const i = 4 * (y * width + x);
+      if (pixels[i] + pixels[i + 1] + pixels[i + 2] < 315) continue;
+      const dx = x - centerX, dy = centerY - y;
+      xx += dx * dx;
+      yy += dy * dy;
+      xy += dx * dy;
+      count++;
+    }
+  }
+  if (count < 25) return "idle";
+  if (xx > 20 * yy) return "left";
+  if (yy > 20 * xx) return "right";
+  if (xy > 0.92 * Math.sqrt(xx * yy)) return "in-phase";
+  if (xy < -0.92 * Math.sqrt(xx * yy)) return "opposite";
+  return "other";
+}
+
+async function expectScope(page, canvas, shape) {
+  await page.waitForFunction(([selector, expected]) => {
+    const node = document.querySelector(selector);
+    const ctx = node.getContext("2d");
+    const pixels = ctx.getImageData(0, 0, node.width, node.height).data;
+    return window.evaluateScope(pixels, node.width, node.height) === expected;
+  }, [canvas, shape]);
+}
+
+async function checkStereo(browser, base, name) {
+  const page = await browser.newPage({ viewport: { width: 1360, height: 820 }, acceptDownloads: true, reducedMotion: "no-preference" });
+  page.setDefaultTimeout(12000);
+  await page.addInitScript(`window.evaluateScope = ${scopeOrientation.toString()};`);
+  const previousWorkletLoads = workletLoads;
+  await page.goto(base);
+  await selectScene(page, "music");
+  const musicInput = button(page, "Music input");
+  await musicInput.click();
+  const aesthetic = page.getByLabel("Music aesthetic");
+  await openFile(page, "Open audio file", stereoFixture("left"));
+  await button(page, "Pause file").waitFor();
+  assert.equal(workletLoads, previousWorkletLoads);
+  await aesthetic.selectOption("scope");
+  await button(page, "Close panel").click();
+  await expectScope(page, "#art", "left");
+  assert.equal(workletLoads, previousWorkletLoads + 1);
+  for (const kind of ["right", "in-phase", "opposite", "mono"]) {
+    await musicInput.click();
+    await openFile(page, "Open audio file", stereoFixture(kind));
+    await page.getByText(kind + ".wav", { exact: true }).first().waitFor();
+    await button(page, "Close panel").click();
+    await expectScope(page, "#art", kind === "mono" ? "in-phase" : kind);
+  }
+
+  await musicInput.click();
+  await openFile(page, "Open audio file", stereoFixture("opposite"));
+  await page.getByLabel("Music theme pack").selectOption("phosphor");
+  await button(page, "Close panel").click();
+  await expectScope(page, "#art", "opposite");
+  await button(page, "Compose").click();
+  assert.equal(await page.getByLabel("Layer aesthetic").inputValue(), "scope");
+  const layer = "#layers canvas";
+  await expectScope(page, layer, "opposite");
+  await button(page, "Pause motion").click();
+  await expectScope(page, layer, "opposite");
+  await button(page, "Export 4K still").click();
+  const png = await saveStill(page, name + "-scope", "portrait");
+  const rendered = await page.evaluate(async (base64) => {
+    const image = new Image();
+    image.src = "data:image/png;base64," + base64;
+    await image.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(image, 0, 0);
+    return window.evaluateScope(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
+  }, png.toString("base64"));
+  assert.equal(rendered, "opposite");
+  await button(page, "Close panel").click();
+  await musicInput.click();
+  await button(page, "Pause file").click();
+  await expectScope(page, layer, "idle");
+  await button(page, "Play file").click();
+  await button(page, "Close panel").click();
+  await button(page, "Resume motion").click();
+  await expectScope(page, layer, "opposite");
+  await page.getByLabel("Composition name").fill("Listening");
+  await button(page, "Save composition").click();
+  await page.reload();
+  await button(page, "Compose").click();
+  await button(page, "Saved compositions").click();
+  await button(page, "Listening").click();
+  assert.equal(await page.getByLabel("Layer aesthetic").inputValue(), "scope");
+  assert.equal(await page.getByLabel("Layer theme pack").inputValue(), "phosphor");
+  await page.close();
+  console.log(name + " true stereo orientation, pause, layers, PNG, and local playback passed");
 }
 
 async function checkTouchFocus(browser, base) {
@@ -381,6 +486,8 @@ try {
     runners.push(runner);
     const browser = await engine.connect(runner.wsEndpoint(), { timeout: 10000 });
     await check(browser, base, name);
+    await checkStereo(browser, base, name);
+    await browser.close();
   }
 } finally {
   server.closeAllConnections();

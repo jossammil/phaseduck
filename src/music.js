@@ -3,6 +3,7 @@ export const musicStyles = [
   ["spectrum", "Radial spectrum"],
   ["ribbons", "Spectral ribbons"],
   ["history", "Spectral history"],
+  ["scope", "Stereo Scope"],
 ];
 
 export const musicPalettes = [
@@ -63,16 +64,98 @@ function themeFor(music) {
 
 export const musicBackground = (music) => themeFor(music).background;
 
+function validStereo(stereo) {
+  const { left, right } = stereo || {};
+  return Array.isArray(left) && Array.isArray(right) && left.length >= 2 &&
+    left.length <= 64 && left.length === right.length &&
+    left.every((value) => Number.isFinite(value) && Math.abs(value) <= 1) &&
+    right.every((value) => Number.isFinite(value) && Math.abs(value) <= 1);
+}
+
 export function setupMusic(ui, api, stopTone, redraw) {
   const { elt, button, choose, picker, modal } = ui;
   const settings = { ...musicAppearance(ui.getStored("music-appearance", null)), source: "local" };
   const player = new Audio();
   const history = {};
-  let context, analyser, frequency, waveform, url, filename;
+  const stereoFrames = {};
+  let context, media, analyser, frequency, waveform, url, filename;
   let stream, frame, visible = false, allowed = [];
+  let scopeVisible = false, scopeNode, scopeLoading, scopeModule, scopeUnavailable = false, localStereo;
   let message = "";
   const connections = () => allowed.length > 0;
   const sources = () => [["local", sourceNames.local], ...allowed.map((id) => [id, sourceNames[id]])];
+
+  function updateStatus() {
+    const status = ui.isPanel("Music input") && document.getElementById("music-status");
+    if (!status) return;
+    const text = message || statusFor(settings.source);
+    if (status.textContent !== text) status.textContent = text;
+  }
+
+  function resetScope(source) {
+    const wasDrawing = Object.hasOwn(stereoFrames, source);
+    delete stereoFrames[source];
+    return wasDrawing;
+  }
+
+  function detachScope() {
+    if (scopeNode) {
+      media.disconnect(scopeNode);
+      scopeNode.disconnect();
+      scopeNode.port.onmessage = null;
+      scopeNode.port.close();
+      scopeNode = null;
+    }
+    localStereo = null;
+    return resetScope("local");
+  }
+
+  const scopeWanted = () => scopeVisible && media && !player.paused && !player.ended;
+  function watchScope() {
+    if (!scopeWanted()) {
+      detachScope();
+      return;
+    }
+    if (scopeNode || scopeLoading || scopeUnavailable) return;
+    if (!context.audioWorklet || typeof AudioWorkletNode !== "function") {
+      scopeUnavailable = true;
+      updateStatus();
+      return;
+    }
+    scopeModule ??= context.audioWorklet.addModule(new URL("./stereo-worklet.js", document.baseURI));
+    scopeLoading = scopeModule.then(() => {
+      if (!scopeWanted()) return;
+      const node = new AudioWorkletNode(context, "phase-stereo-scope", { outputChannelCount: [1] });
+      node.port.onmessage = ({ data }) => {
+        if (scopeNode !== node) return;
+        const first = !localStereo;
+        localStereo = validStereo(data) ? data : null;
+        if (first) updateStatus();
+      };
+      node.onprocessorerror = () => {
+        if (scopeNode !== node) return;
+        scopeUnavailable = true;
+        if (detachScope()) redraw();
+        updateStatus();
+      };
+      media.connect(node).connect(context.destination);
+      scopeNode = node;
+    }).catch(() => {
+      scopeUnavailable = true;
+      updateStatus();
+    }).finally(() => { scopeLoading = null; });
+  }
+
+  for (const event of ["pause", "ended", "emptied"]) {
+    player.addEventListener(event, () => {
+      if (detachScope()) redraw();
+      updateStatus();
+    });
+  }
+  player.addEventListener("playing", () => {
+    watchScope();
+    updateStatus();
+  });
 
   async function openFile() {
     const file = await choose("audio/*,.wav,.mp3,.m4a,.ogg,.flac");
@@ -84,13 +167,15 @@ export function setupMusic(ui, api, stopTone, redraw) {
       analyser.smoothingTimeConstant = 0.72;
       frequency = new Uint8Array(analyser.frequencyBinCount);
       waveform = new Float32Array(analyser.fftSize);
-      context.createMediaElementSource(player).connect(analyser).connect(context.destination);
+      media = context.createMediaElementSource(player);
+      media.connect(analyser).connect(context.destination);
     }
     if (url) URL.revokeObjectURL(url);
     url = URL.createObjectURL(file);
     filename = file.name;
     delete history.local;
     player.src = url;
+    if (detachScope()) redraw();
     await Promise.all([context.resume(), player.play()]);
   }
 
@@ -98,17 +183,26 @@ export function setupMusic(ui, api, stopTone, redraw) {
     if (!visible || !connections()) {
       stream?.close();
       stream = null;
+      if (frame?.source) resetScope(frame.source);
       frame = null;
       return;
     }
     if (stream) return;
     stream = new EventSource("/api/audio/events");
     stream.onmessage = (event) => {
+      const previous = frame?.source;
       frame = JSON.parse(event.data);
-      const status = ui.isPanel("Music input") && document.getElementById("music-status");
-      if (status) status.textContent = statusFor(settings.source);
+      if (!validStereo(frame.stereo)) delete frame.stereo;
+      if (previous && (frame.source !== previous || frame.status !== "live" || !frame.stereo) &&
+          resetScope(previous)) redraw();
+      updateStatus();
     };
-    stream.onerror = () => { frame = null; };
+    stream.onerror = () => {
+      const cleared = frame?.source && resetScope(frame.source);
+      frame = null;
+      if (cleared) redraw();
+      updateStatus();
+    };
   }
 
   async function live(source) {
@@ -129,12 +223,19 @@ export function setupMusic(ui, api, stopTone, redraw) {
     if (source === "local") {
       if (!filename) return "Open an audio file to begin";
       if (player.error) return "This audio file could not be played";
-      return player.paused ? filename + " · paused" : filename;
+      if (player.paused || player.ended) return filename + " · paused";
+      if (settings.style === "scope" || scopeVisible) {
+        if (scopeUnavailable) return filename + " · Stereo samples unavailable";
+        if (!localStereo) return filename + " · Waiting for stereo samples";
+      }
+      return filename;
     }
     if (!allowed.includes(source)) return "Live audio is unavailable in this build";
     if (!frame || frame.source !== source) return "Capture is off";
     if (frame.status === "error") return frame.message || "Audio capture failed";
     if (frame.status === "waiting") return frame.message || "Waiting for audio · check macOS audio permission";
+    if (settings.style === "scope" && !frame.stereo)
+      return sourceNames[source] + " · Stereo samples unavailable";
     return frame.status === "silent" ? sourceNames[source] + " · silent" : sourceNames[source] + " · listening";
   }
 
@@ -146,6 +247,7 @@ export function setupMusic(ui, api, stopTone, redraw) {
   function changeAppearance(key, value) {
     settings[key] = value;
     redraw();
+    updateStatus();
     saveAppearance();
   }
 
@@ -154,6 +256,7 @@ export function setupMusic(ui, api, stopTone, redraw) {
     const source = picker(sources(), settings.source, (value) => {
       settings.source = value;
       message = "";
+      redraw();
       controls(false);
     }, "Audio source");
     const status = elt("p", message || statusFor(settings.source), "hint");
@@ -202,7 +305,10 @@ export function setupMusic(ui, api, stopTone, redraw) {
 
   function read() {
     const frames = {};
-    if (frame?.source && frame.status === "live") frames[frame.source] = frame;
+    if (frame?.source && frame.status === "live") {
+      frames[frame.source] = frame;
+      if (frame.stereo) stereoFrames[frame.source] = frame.stereo;
+    }
     if (analyser && !player.paused) {
       analyser.getByteFrequencyData(frequency);
       analyser.getFloatTimeDomainData(waveform);
@@ -212,6 +318,7 @@ export function setupMusic(ui, api, stopTone, redraw) {
       });
       const wave = Array.from({ length: 64 }, (_, index) => waveform[index * 32]);
       frames.local = { bands, wave, level: Math.sqrt(waveform.reduce((sum, x) => sum + x * x, 0) / waveform.length) };
+      if (localStereo) stereoFrames.local = localStereo;
     }
     const now = performance.now();
     for (const [source, summary] of Object.entries(frames)) {
@@ -224,9 +331,12 @@ export function setupMusic(ui, api, stopTone, redraw) {
   }
 
   return {
-    settings, sources, controls, statusFor, read, history,
+    settings, sources, controls, statusFor, read, history, stereoFrames,
     setCapabilities(values) { allowed = values || []; watch(); },
-    setVisible(value) { if (visible !== value) { visible = value; watch(); } },
+    setVisible(value, localScope) {
+      if (visible !== value) { visible = value; watch(); }
+      if (scopeVisible !== localScope) { scopeVisible = localScope; watchScope(); }
+    },
   };
 }
 
@@ -280,11 +390,47 @@ function paintHistory(ctx, width, height, series, colors, sensitivity, theme, hi
   ctx.fillText("Latest sample", x + w, y + h + 19);
 }
 
-export function paintMusic(ctx, width, height, { music, audioFrames, audioHistory, time, hideLabels }) {
+function paintScope(ctx, width, height, stereo, colors, gain, theme, hideLabels) {
+  const x = width / 2, y = height / 2, radius = Math.min(width, height) * 0.36;
+  ctx.globalAlpha = 0.27;
+  ctx.strokeStyle = colors[0];
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x - radius, y);
+  ctx.lineTo(x + radius, y);
+  ctx.moveTo(x, y - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.stroke();
+  if (!hideLabels) {
+    ctx.globalAlpha = 0.78;
+    ctx.fillStyle = colors[2];
+    ctx.font = "500 12px system-ui";
+    ctx.fillText("L", x + radius + 6, y + 4);
+    ctx.fillText("R", x - 4, y - radius - 6);
+  }
+  if (!stereo) return;
+  const scale = (value) => radius * Math.max(-1, Math.min(1, value * gain));
+  const gradient = ctx.createLinearGradient(x - radius, y + radius, x + radius, y - radius);
+  colors.forEach((color, index) => gradient.addColorStop(index / 2, color));
+  ctx.globalAlpha = 0.94;
+  ctx.strokeStyle = gradient;
+  ctx.lineWidth = theme.width;
+  ctx.beginPath();
+  stereo.left.forEach((left, index) => {
+    ctx[index ? "lineTo" : "moveTo"](x + scale(left), y - scale(stereo.right[index]));
+  });
+  ctx.stroke();
+}
+
+export function paintMusic(ctx, width, height, { music, audioFrames, audioHistory, stereoFrames, time, hideLabels }) {
   const frame = audioFrames?.[music?.source];
   const theme = themeFor(music);
   const colors = Object.hasOwn(palettes, music?.palette) ? palettes[music.palette] : theme.colors;
   const gain = music?.sensitivity || 1;
+  if (music?.style === "scope") {
+    paintScope(ctx, width, height, stereoFrames?.[music.source], colors, gain, theme, hideLabels);
+    return;
+  }
   if (music?.style === "history") {
     paintHistory(ctx, width, height, audioHistory?.[music.source] || [], colors, gain, theme, hideLabels);
     return;
