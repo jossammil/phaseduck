@@ -1,4 +1,5 @@
 """Package the static site and local launch instructions into a reproducible ZIP."""
+import argparse
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
@@ -6,8 +7,10 @@ root = Path(__file__).resolve().parents[1]
 dist = root / "dist"
 if not (dist / "index.html").is_file():
     raise SystemExit("Run npm run build first.")
-out = root / "releases" / "phaseduck-browser.zip"
-out.parent.mkdir(exist_ok=True)
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--output", type=Path, default=root / "releases/phaseduck-browser.zip")
+out = parser.parse_args().output.resolve()
+out.parent.mkdir(parents=True, exist_ok=True)
 instructions = """Phase Deck browser edition
 
 Extract this whole archive. Open a terminal in the extracted folder and run:
@@ -17,6 +20,8 @@ Extract this whole archive. Open a terminal in the extracted folder and run:
 On Windows with the Python launcher, use py -3 in place of python3.
 Open http://localhost:4180 in your browser. Stop the server with Ctrl+C.
 Base R, Python and DuckDB are bundled. Imported data stays in your browser.
+Use Explore data for CSV and Parquet, Compose to arrange layers, and Ambient
+display to open a separate window. Music Visualizer can play a local audio file.
 Live radar needs internet access. The Mac native job runner is a separate tool.
 """
 def add(archive, name, data):

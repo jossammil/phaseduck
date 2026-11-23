@@ -2,6 +2,11 @@ import { paint, inspect } from "./art.mjs";
 import { targets, validateSignal, validateMarks } from "./signals.js";
 import { archive, latest, metadata } from "./radar.js";
 import { setupConsole } from "./workbench.js";
+import { setupMusic } from "./music.js";
+import { dataExplorer } from "./explorer.js";
+import { setupJobs, jobMetrics, jobStatus } from "./jobs.js";
+import { setupComposer } from "./composer.js";
+import { setupAmbient } from "./ambient.js";
 
 const $ = (id) => document.getElementById(id);
 const sceneDefs = {
@@ -14,6 +19,7 @@ const sceneDefs = {
   jobs: ["Job Interference", "Process monitor", "≀"],
   calendar: ["Calendar Orrery", "Next 24 hours", "◴"],
   feedback: ["Patch Feedback", "Live sketch", "⟲"],
+  music: ["Music Visualizer", "Audio", "♫"],
 };
 const state = {
   scene: "clock",
@@ -65,6 +71,8 @@ let raf = 0,
   osc = null,
   gain = null,
   volume = 0.045;
+let capabilities = {};
+let refreshingJobs, jobTimer;
 const stage = $("art"),
   ctx = stage.getContext("2d", { alpha: false });
 let w = 0,
@@ -118,8 +126,31 @@ function picker(options, chosen, onChange, label) {
 }
 function modal(title, items) {
   $("panel-title").textContent = title;
+  $("panel").classList.toggle("wide-panel", ["Explore data", "Job monitor"].includes(title));
   $("panel-body").replaceChildren(...items);
   if (!$("panel").open) $("panel").showModal();
+}
+function label(text, field) {
+  const item = elt("label", text);
+  item.append(field);
+  return item;
+}
+async function copy(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const selection = elt("textarea");
+    selection.value = text;
+    selection.className = "visually-hidden";
+    const container = $("panel").open ? $("panel") : document.body;
+    const focused = document.activeElement;
+    container.append(selection);
+    selection.select();
+    const copied = document.execCommand("copy");
+    selection.remove();
+    focused?.focus();
+    if (!copied) throw Error("Select the text and copy it with your keyboard.");
+  }
 }
 function showError(error) {
   const msg = error?.message || String(error);
@@ -300,11 +331,6 @@ async function patchPanel() {
     () => {},
     "Destination",
   );
-  const label = (name, field) => {
-    const l = elt("label", name);
-    l.append(field);
-    return l;
-  };
   const actions = elt("div", undefined, "panel-actions");
   actions.append(
     button("Apply patch", () => {
@@ -367,20 +393,33 @@ async function api(path, data, auth = true) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         }
-      : { cache: "no-store" },
+      : { cache: "no-store", signal: AbortSignal.timeout?.(5000) },
   );
   const j = await r.json();
   if (!r.ok) throw Error(j.error || "Mac service unavailable");
   return j;
 }
-async function refreshJobs() {
+function refreshJobs() {
   if (!native) return;
+  if (!refreshingJobs) refreshingJobs = pollJobs().finally(() => { refreshingJobs = null; });
+  return refreshingJobs;
+}
+function jobSnapshot(result) {
+  state.jobs = result.jobs;
+  workspace = result.workspace;
+  if (JSON.stringify(capabilities) !== JSON.stringify(result.capabilities || {})) {
+    capabilities = result.capabilities || {};
+    music.setCapabilities(capabilities.audio_sources);
+    composer.refreshControls();
+  }
+  lastNativeError = "";
+  ambient.ingest(state.jobs, result.server_time);
+}
+async function pollJobs() {
   try {
     const v = await api("/api/status");
-    state.jobs = v.jobs;
-    workspace = v.workspace;
-    lastNativeError = "";
-    const j = v.jobs.find((j) => Number.isFinite(j.bytes_per_second));
+    jobSnapshot(v);
+    const j = activeJobs().find((j) => Number.isFinite(j.bytes_per_second));
     if (j && (lastRateId !== j.id || lastRate !== j.bytes_per_second)) {
       const history =
         lastRateId === j.id ? signals.download_rate?.values || [] : [];
@@ -396,7 +435,9 @@ async function refreshJobs() {
     }
   } catch (e) {
     lastNativeError = "Monitor disconnected · last known state";
+    ambient.disconnect();
   }
+  jobPanel.update();
   updateReadout();
   draw();
 }
@@ -411,23 +452,24 @@ async function connect() {
       return;
     const result = await r.json();
     native = true;
-    state.jobs = result.jobs;
-    workspace = result.workspace;
-    $("connection").textContent = "Mac Studio · local";
+    jobSnapshot(result);
+    $("connection").textContent = "Mac companion · local";
     updateReadout();
-    setInterval(() => {
-      if (!document.hidden) refreshJobs();
-    }, 1700);
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) refreshJobs();
-    });
+    if (!jobTimer) {
+      jobTimer = setInterval(() => {
+        if (!document.hidden) refreshJobs();
+      }, 1700);
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) refreshJobs();
+      });
+    }
   } catch (e) {
     if (key) workbench.line(e.message, "error");
   }
 }
-async function useJob(id) {
-  const log = await api("/api/log?id=" + encodeURIComponent(id));
-  const events = log.text
+async function useJob(id, text) {
+  const log = text ?? (await api("/api/log?id=" + encodeURIComponent(id))).text;
+  const events = log
     .split("\n")
     .filter((x) => x.startsWith("@DECK@"))
     .map((x) => JSON.parse(x.slice(6)));
@@ -436,61 +478,6 @@ async function useJob(id) {
       "This job has no published instrument output in its recent log.",
     );
   apply(events);
-}
-function jobsPanel() {
-  const items = [];
-  if (lastNativeError) items.push(elt("p", lastNativeError, "error"));
-  if (!native) {
-    items.push(
-      elt(
-        "p",
-        "Start Phase Deck on the Mac and open its private sign-in link to monitor native jobs.",
-      ),
-    );
-  } else {
-    items.push(
-      elt("p", "Workspace · " + workspace, "hint"),
-      button("Run pulse.py", async () => {
-        const { id } = await api("/api/jobs", {
-          kind: "run",
-          path: "pulse.py",
-        });
-        await refreshJobs();
-        selectedJob = id;
-        jobsPanel();
-      }),
-    );
-    for (const job of state.jobs) {
-      const b = button(job.label + " · " + job.status, async () => {
-        selectedJob = job.id;
-        const log = await api("/api/log?id=" + job.id);
-        modal(job.label, [
-          elt(
-            "p",
-            [job.status, job.stage, job.id].filter(Boolean).join(" · "),
-            "hint",
-          ),
-          elt("pre", log.text || "No output yet.", "log-output"),
-          ...(log.text.includes("@DECK@")
-            ? [
-                button("Use published output", async () => {
-                  await useJob(job.id);
-                  await patchPanel();
-                }),
-              ]
-            : []),
-          button("Solo waveform", () => {
-            $("panel").close();
-            setScene("jobs");
-          }),
-        ]);
-      });
-      b.className = "job-row";
-      items.push(b);
-    }
-    if (!state.jobs.length) items.push(elt("p", "No recorded jobs yet."));
-  }
-  modal("Job monitor", items);
 }
 function calendarRestore() {
   const list = getStored("calendar", null);
@@ -665,13 +652,15 @@ function controlBar() {
     );
   if (state.scene === "jobs")
     list.push(
-      button("Job history", jobsPanel),
+      button("Job history", jobPanel.open),
       button("All waveforms", () => {
         selectedJob = "";
         draw();
         updateReadout();
       }),
     );
+  if (state.scene === "music")
+    list.push(button("Music input", music.controls));
   if (state.scene === "feedback")
     list.push(
       button("Edit sketch", () => workbench.edit("shell.py")),
@@ -710,12 +699,14 @@ function setScene(id) {
   radarSelection = null;
   if (!Object.hasOwn(sceneDefs, id))
     throw Error("Choose one of " + Object.keys(sceneDefs).join(", "));
+  composer.leave();
   state.scene = id;
   $("title").textContent = sceneDefs[id][0];
   $("category").textContent = sceneDefs[id][1];
   for (const b of $("library").children)
     b.setAttribute("aria-current", String(b.dataset.id === id));
   stage.setAttribute("aria-label", sceneDefs[id][0] + " generative instrument");
+  $("instrument-controls").hidden = false;
   controlBar();
   updateReadout();
   draw();
@@ -723,7 +714,7 @@ function setScene(id) {
 }
 function activeJobs() {
   return state.jobs.filter((j) =>
-    ["queued", "watching", "running", "waiting"].includes(j.status),
+    ["queued", "watching", "running", "waiting", "canceling"].includes(j.status),
   );
 }
 function updateReadout() {
@@ -781,10 +772,14 @@ function updateReadout() {
     sub =
       lastNativeError ||
       (j
-        ? [j.status, j.stage].filter(Boolean).join(" · ")
+        ? [jobStatus(j.status), j.stage, ...jobMetrics(j)].filter(Boolean).join(" · ")
         : native
           ? "Local job history"
           : "Browser studio · native jobs available on the Mac");
+  }
+  if (scene === "music") {
+    text = music.statusFor(music.settings.source);
+    sub = "";
   }
   if (["orbit", "silk", "dunes", "feedback"].includes(scene)) {
     text =
@@ -800,18 +795,16 @@ function updateReadout() {
     if (scene === "dunes" && targets[state.patch] === scene && radarSelection)
       sub = radarSelection;
   }
-  $("readout").textContent = text;
-  $("detail").textContent = sub;
+  $("readout").textContent = composer.active() ? "" : text;
+  $("detail").textContent = composer.active() ? "" : sub;
   const current = activeJobs()[0];
   $("job-readout").textContent =
     lastNativeError ||
     (current
       ? [
           current.label,
-          current.stage || current.status,
-          Number.isFinite(current.progress)
-            ? Math.round(current.progress * 100) + "%"
-            : "",
+          current.stage || jobStatus(current.status),
+          ...jobMetrics(current),
         ]
           .filter(Boolean)
           .join(" · ")
@@ -826,12 +819,24 @@ function updateReadout() {
 }
 function draw() {
   if (!w || !ctx) return;
+  syncAudio();
+  state.music = music.settings;
+  if (!paused && (state.scene === "music" || composer.has("music"))) state.audioFrames = music.read();
+  if (composer.active()) {
+    composer.paint(w, h);
+    if (measureFrames) window.dispatchEvent(new Event("phase-frame"));
+    return;
+  }
   const rendered =
     selectedJob && state.scene === "jobs"
       ? { ...state, jobs: state.jobs.filter((j) => j.id === selectedJob) }
       : state;
   paint(ctx, w, h, rendered);
   if (measureFrames) window.dispatchEvent(new Event("phase-frame"));
+}
+function syncAudio() {
+  music.setVisible(visible && !document.hidden &&
+    (composer.active() ? composer.has("music") : state.scene === "music"));
 }
 function resize() {
   const box = stage.getBoundingClientRect();
@@ -891,6 +896,7 @@ function restart() {
   if (raf) cancelAnimationFrame(raf);
   raf = 0;
   previous = null;
+  syncAudio();
   if (visible && !document.hidden) raf = requestAnimationFrame(tick);
 }
 function setPause(value) {
@@ -960,6 +966,82 @@ async function toggleAudio() {
     $("audio").after(l);
   } else if (!audio) slider?.remove();
 }
+const ui = {
+  elt, button, picker, choose, copy, label, modal, getStored, store,
+  close: () => $("panel").close(),
+  isPanel: (title) => $("panel").open && $("panel-title").textContent === title,
+};
+const music = setupMusic(ui, api, async () => { if (audio) await toggleAudio(); });
+const jobPanel = setupJobs(ui, {
+  api, connected: () => native, workspace: () => workspace,
+  jobs: () => state.jobs, error: () => lastNativeError,
+  capable: () => capabilities.job_controls,
+  refresh: refreshJobs,
+  async use(id, text) { await useJob(id, text); await patchPanel(); },
+  solo(id) { selectedJob = id; ui.close(); setScene("jobs"); },
+});
+let dataSignal = 0;
+const explorer = dataExplorer(ui, (target, profile, layer) => {
+  const name = "data_" + ++dataSignal + "_" + profile.field.replace(/[^a-z0-9]/gi, "_").slice(0, 32);
+  const signal = validateSignal(name, profile.values, profile.field.slice(0, 80));
+  signals[name] = signal;
+  if (layer) composer.add(targets[target], { patch: target, source: name, signal });
+  else patch(name, target);
+  ui.close();
+}, (profile) => {
+  const { field, bins, min, max } = profile;
+  composer.add("histogram", { histogram: { field, bins, min, max } });
+  ui.close();
+});
+const composer = setupComposer(ui, {
+  stack: $("layers"), tools: $("composition-editor"), music, sceneDefs,
+  signals: () => signals, jobs: () => state.jobs,
+  connectionError: () => lastNativeError, display: () => ambient.display,
+  favorite: (item) => ambient.addFavorite(item),
+  exit: () => setScene(state.scene), explore: explorer.open, redraw: draw,
+  initial: (make) => make(state.scene, true, {
+    patch: targets[state.patch] === state.scene ? state.patch : "",
+    source: targets[state.patch] === state.scene ? patchName : "",
+    signal: targets[state.patch] === state.scene ? signals[patchName] : null,
+    sketch: state.sketch,
+  }),
+  layerState(layer) {
+    const signal = layer.source === "download_rate" ? signals.download_rate || layer.signal : layer.signal;
+    return { ...state, scene: layer.kind, patch: layer.patch, signal: signal?.values || [],
+      sketch: layer.sketch || (layer.kind === "feedback" ? state.sketch : []), music: layer.music };
+  },
+  inspect(layer, data) {
+    let text;
+    if (layer.kind === "loom") text = data.date + " at " + data.hour + ":00 · " + data.value.toLocaleString() + " pickups";
+    if (layer.kind === "dunes") text = "Value " + (data.hour + 1) + " · " + data.value + " " + (layer.signal?.unit || "");
+    if (layer.kind === "rain") text = data.value == null ? "No visible echo" : data.value + " dBZ peak";
+    if (layer.kind === "jobs") text = [data.job.label, jobStatus(data.job.status), ...jobMetrics(data.job)].join(" · ");
+    if (layer.kind === "calendar") text = new Date(data.event.start).toLocaleString() + " – " + new Date(data.event.end).toLocaleString();
+    if (text) modal(sceneDefs[layer.kind][0], [elt("p", text)]);
+  },
+  changed() {
+    $("compose-button").setAttribute("aria-pressed", String(composer.isEditing()));
+    stage.parentElement.classList.toggle("composing", composer.active());
+    stage.setAttribute("aria-hidden", String(composer.active()));
+    if (composer.active()) {
+      $("title").textContent = composer.title();
+      $("category").textContent = "Composition";
+      $("instrument-controls").hidden = true;
+      for (const item of $("library").children) item.setAttribute("aria-current", "false");
+      if (composer.has("rain") && !state.radar && !radarLoading && !radarError) loadRadar();
+    }
+    draw();
+    updateReadout();
+  },
+});
+const ambient = setupAmbient(ui, {
+  sceneDefs, overlay: $("ambient-jobs"), controls: $("ambient-controls"),
+  paused: () => paused, togglePause: freeze, music: music.controls, compositions: composer.saved,
+  select(item) {
+    if (item.type === "composition" && composer.show(item.id)) return;
+    setScene(item.type === "scene" ? item.id : "clock");
+  },
+});
 const workbench = setupConsole({
   signals: () => signals,
   apply,
@@ -986,7 +1068,10 @@ for (const [id, [name, , glyph]] of Object.entries(sceneDefs)) {
 $("audio").onclick = () => toggleAudio().catch(showError);
 $("pause").onclick = freeze;
 $("patch-button").onclick = () => patchPanel().catch(showError);
-$("jobs-button").onclick = jobsPanel;
+$("jobs-button").onclick = jobPanel.open;
+$("explore-button").onclick = explorer.open;
+$("compose-button").onclick = composer.start;
+$("ambient-button").onclick = ambient.configure;
 function focusMode() {
   const f = document.body.classList.toggle("focus");
   $("unfocus").hidden = !f;
@@ -1041,7 +1126,7 @@ document.addEventListener("keydown", (e) => {
     return;
   if (
     e.key === "Escape" &&
-    document.body.classList.contains("focus") &&
+    document.body.classList.contains("focus") && !ambient.display &&
     !$("panel").open
   )
     focusMode();
@@ -1079,9 +1164,9 @@ setInterval(() => {
   if (paused) {
     state.now = new Date();
     updateReadout();
-    if (["calendar", "clock"].includes(state.scene)) draw();
+    if (["calendar", "clock"].includes(state.scene) || composer.active()) draw();
   }
-  if (state.scene === "rain" && !radarLoading) {
+  if ((composer.active() ? composer.has("rain") : state.scene === "rain") && !radarLoading) {
     if (radarPlaying && radarMode === "archive") {
       radarIndex = (radarIndex + 1) % 6;
       loadRadar();
@@ -1109,4 +1194,8 @@ fetch("./data/days.json")
 calendarRestore();
 setScene("clock");
 setPause(paused);
+ambient.initialize();
 connect().catch(showError);
+addEventListener("hashchange", () => {
+  if (new URLSearchParams(location.hash.slice(1)).has("session")) connect().catch(showError);
+});

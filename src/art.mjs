@@ -1,7 +1,8 @@
 /* All geometry is procedural. The caller owns the animation clock and DPR. */
+import { paintMusic } from "./music.js";
 const TAU = Math.PI * 2;
 const clip = (v, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
-const lerp = (a, b, t) => a + (b - a) * t;
+const lerp = (a, b, t) => a * (1 - t) + b * t;
 const COLOR = {
   ice: "#9cf2dd",
   sky: "#91c9f4",
@@ -51,7 +52,10 @@ function sample(a, u) {
 }
 function unit(a, u) {
   const { min, max } = signalScale(a);
-  return max === min ? 0.5 : clip((sample(a, u) - min) / (max - min));
+  if (max === min) return 0.5;
+  const value = sample(a, u);
+  return clip(Number.isFinite(max - min) ? (value - min) / (max - min) :
+    (value / 2 - min / 2) / (max / 2 - min / 2));
 }
 function mapped(s, key) {
   return s.patch === key && numericArray(s.signal);
@@ -869,14 +873,16 @@ const painters = {
   dunes,
   orbit: harmonics,
   harmonics,
+  music: paintMusic,
 };
-export function paint(ctx, w, h, s = {}) {
+export function paint(ctx, w, h, s = {}, background = true) {
   if (!ctx || !Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0)
     return;
   ctx.save();
   try {
     ctx.globalCompositeOperation = "source-over";
-    backdrop(ctx, w, h, s);
+    if (background) backdrop(ctx, w, h, s);
+    else ctx.clearRect(0, 0, w, h);
     (painters[s.scene] || silk)(ctx, w, h, s);
     if (s.scene !== "feedback") primitives(ctx, w, h, s.sketch);
   } finally {

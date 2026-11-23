@@ -51,11 +51,20 @@
               <h1 id="title">Phase Clock</h1>
             </div>
             <canvas id="art" role="img" aria-label="Generative clock"></canvas>
+            <div id="layers" hidden aria-label="Composition canvas"></div>
             <div class="readout">
               <span id="readout"></span><small id="detail"></small>
             </div>
             <button id="unfocus" hidden>Exit focus</button>
+            <div id="ambient-jobs" hidden></div>
+            <nav id="ambient-controls" aria-label="Ambient display controls"></nav>
           </div>
+          <div class="studio-tools" aria-label="Studio tools">
+            <button id="explore-button">Explore data</button>
+            <button id="compose-button" aria-pressed="false">Compose</button>
+            <button id="ambient-button">Ambient display</button>
+          </div>
+          <section id="composition-editor" aria-label="Composition editor" hidden></section>
           <div id="instrument-controls" class="instrument-controls"></div>
           <div class="ledger">
             <div>
