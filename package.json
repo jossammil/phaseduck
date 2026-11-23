@@ -1,0 +1,24 @@
+{
+  "name": "phaseduck",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "python3 -m http.server 4180 --bind 127.0.0.1 --directory dist",
+    "package:browser": "npm run build && python3 scripts/package-browser.py"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.10.0",
+    "@codemirror/state": "^6.5.0",
+    "@codemirror/view": "^6.38.0",
+    "@duckdb/duckdb-wasm": "1.32.0",
+    "@replit/codemirror-vim": "^6.3.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "playwright-core": "^1.58.2"
+  }
+}

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#0a1017" />
+    <title>Phase Deck · Ambient instruments</title>
+    <link rel="icon" href="./mark.svg" />
+    <link rel="stylesheet" href="./deck.css" />
+  </head>
+  <body>
+    <div id="deck">
+      <header class="top">
+        <div class="brand">
+          <img src="./mark.svg" alt="" width="30" height="30" /><strong
+            >Phase Deck</strong
+          >
+        </div>
+        <span id="connection">Browser studio</span>
+        <div class="top-actions">
+          <details class="download">
+            <summary>Download</summary>
+            <div>
+              <a href="https://github.com/jossammil/phaseduck/releases/latest/download/phaseduck-browser.zip">Browser edition <small>Windows, Mac, Linux</small></a>
+              <a href="https://github.com/jossammil/phaseduck/releases/latest/download/phaseduck-mac-arm64.zip">Mac companion <small>Apple silicon · native jobs and Neovim</small></a>
+            </div>
+          </details>
+          <button id="focus" aria-pressed="false">Focus view</button
+          ><button
+            id="terminal-button"
+            aria-expanded="false"
+            aria-controls="drawer"
+          >
+            Terminal <kbd>`</kbd>
+          </button>
+        </div>
+      </header>
+      <main>
+        <aside aria-label="Instrument library">
+          <h2>Instruments</h2>
+          <nav id="library"></nav>
+          <div class="rail-tail">
+            <button id="audio" aria-pressed="false">Sound off</button
+            ><button id="pause" aria-pressed="false">Pause motion</button>
+          </div>
+        </aside>
+        <section class="work">
+          <div class="frame">
+            <div class="scene-head">
+              <span id="category"></span>
+              <h1 id="title">Phase Clock</h1>
+            </div>
+            <canvas id="art" role="img" aria-label="Generative clock"></canvas>
+            <div class="readout">
+              <span id="readout"></span><small id="detail"></small>
+            </div>
+            <button id="unfocus" hidden>Exit focus</button>
+          </div>
+          <div id="instrument-controls" class="instrument-controls"></div>
+          <div class="ledger">
+            <div>
+              <h2>Patch</h2>
+              <div id="patch-readout">Clock time</div>
+            </div>
+            <button id="patch-button">Patch signals</button>
+            <div class="job-column">
+              <h2>Job monitor</h2>
+              <div id="job-readout">No active jobs</div>
+            </div>
+            <button id="jobs-button">View jobs</button>
+          </div>
+        </section>
+      </main>
+    </div>
+    <section id="drawer" hidden aria-label="Terminal workbench">
+      <div class="drawer-head">
+        <strong>Terminal</strong><span id="prompt-type">Deck · browser</span
+        ><button id="stop" hidden>Reset runtime</button
+        ><button id="close">Close</button>
+      </div>
+      <div id="workbench">
+        <section class="console-col">
+          <div id="history" role="log" aria-live="polite"></div>
+          <form id="cmd-form">
+            <label for="command" id="prompt">deck ›</label
+            ><textarea
+              id="command"
+              rows="2"
+              spellcheck="false"
+              placeholder="Type help for commands"
+            ></textarea
+            ><button>Run</button>
+          </form>
+        </section>
+        <section id="editor-pane" hidden>
+          <div class="panel-head">
+            <strong id="filename"></strong
+            ><button id="run-file">Run code</button
+            ><button id="close-editor">Close editor</button>
+          </div>
+          <div id="editor"></div>
+        </section>
+        <section id="pty-pane" hidden>
+          <div class="panel-head">
+            <strong>Neovim · Mac Studio</strong
+            ><span>:wq to save and exit</span>
+          </div>
+          <div id="pty"></div>
+        </section>
+      </div>
+    </section>
+    <dialog id="panel">
+      <div class="panel-head">
+        <h2 id="panel-title"></h2>
+        <button id="panel-close" aria-label="Close panel">Close</button>
+      </div>
+      <div id="panel-body"></div>
+    </dialog>
+    <input type="file" id="file-input" hidden />
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

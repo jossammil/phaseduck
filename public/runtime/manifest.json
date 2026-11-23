@@ -1,0 +1,929 @@
+{
+  "algorithm": "sha256",
+  "archives": {
+    "webr": {
+      "version": "0.6.1",
+      "url": "https://github.com/r-wasm/webr/releases/download/v0.6.1/webr-0.6.1.tar.gz",
+      "sha256": "4835b6fe8b7955774a20b97313bb2e64bec28bc2c15ef15a63502be25b9def70",
+      "size": 39868123
+    },
+    "python": {
+      "version": "0.27.7",
+      "url": "https://github.com/pyodide/pyodide/releases/download/0.27.7/pyodide-core-0.27.7.tar.bz2",
+      "sha256": "9bc8f127db6c590b191b9aee754022cb41b1a36c7bac233776c11c5ecb541be8",
+      "size": 5608503
+    }
+  },
+  "files": [
+    {
+      "path": "webr/COPYING-R",
+      "size": 18011,
+      "sha256": "e6d6a009505e345fe949e1310334fcb0747f28dae2856759de102ab66b722cb4",
+      "url": "https://svn.r-project.org/R/tags/R-4-6-0/COPYING"
+    },
+    {
+      "path": "webr/COPYING-R-4.6.0",
+      "size": 18011,
+      "sha256": "e6d6a009505e345fe949e1310334fcb0747f28dae2856759de102ab66b722cb4",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/doc.data.gz",
+      "virtual_file": "/COPYING",
+      "metadata": "webr-0.6.1/vfs/usr/lib/R/doc.js.metadata"
+    },
+    {
+      "path": "webr/COPYRIGHTS-R-4.6.0",
+      "size": 33077,
+      "sha256": "93a225906ee6514d1482548f8945e41a5cfcbae70610f9577ac7c9a512e060f0",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/doc.data.gz",
+      "virtual_file": "/COPYRIGHTS",
+      "metadata": "webr-0.6.1/vfs/usr/lib/R/doc.js.metadata"
+    },
+    {
+      "path": "webr/LICENSE-webR.md",
+      "size": 37609,
+      "sha256": "0ac1bff20e1329e244669e318269e6b40f327aecc78c3f18376ac59e923dde23",
+      "url": "https://raw.githubusercontent.com/r-wasm/webr/v0.6.1/LICENSE.md"
+    },
+    {
+      "path": "webr/R.js",
+      "size": 785875,
+      "sha256": "e56f63e2959e542ed96357600b3d9608c999e7d1b406f5cc57de2160d71c8287",
+      "archive": "webr",
+      "member": "webr-0.6.1/R.js"
+    },
+    {
+      "path": "webr/R.wasm",
+      "size": 18653856,
+      "sha256": "1d7a9c7727086ced734b07a1aca6b6b2c2aeec5b43079106815ddafa89eaec79",
+      "archive": "webr",
+      "member": "webr-0.6.1/R.wasm"
+    },
+    {
+      "path": "webr/libRblas.so",
+      "size": 384626,
+      "sha256": "5060c070575f163489faf36314ee73ba4c10969673e02895db6145fec11b0487",
+      "archive": "webr",
+      "member": "webr-0.6.1/libRblas.so"
+    },
+    {
+      "path": "webr/libRlapack.so",
+      "size": 1895716,
+      "sha256": "b25f6a1c0e079bba6d2d42d6599c9d78bcac0810d53bf1d019b6383a8cd122c3",
+      "archive": "webr",
+      "member": "webr-0.6.1/libRlapack.so"
+    },
+    {
+      "path": "webr/vfs/etc/fonts/fonts.conf",
+      "size": 1089,
+      "sha256": "a93efbf9eec83d72a463f1d52f54043a8afa6ae7cc05609deda73232525e7bc0",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/etc/fonts/fonts.conf"
+    },
+    {
+      "path": "webr/vfs/etc/ssl/cert.pem",
+      "size": 188900,
+      "sha256": "a41b5d356aea97a529fe27e0f7316d2f9d946d75927476cf9cf1b90637d00505",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/etc/ssl/cert.pem"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/doc.data.gz",
+      "size": 3832458,
+      "sha256": "a52bb823b25697dbe31d17d4f1ad040dfa85fc1cddfe7f9cd7cb0a132ee80882",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/doc.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/doc.js.metadata",
+      "size": 8701,
+      "sha256": "285a4b81c7cefd98c62828202665694202248807f593e1aa8bccd2d7ae36755a",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/doc.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/base/demo.data.gz",
+      "size": 4460,
+      "sha256": "4482a10b0644940577395f5bf9c53f3b1ac42107f5374ae8279ac96f5569aeb1",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/base/demo.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/base/demo.js.metadata",
+      "size": 263,
+      "sha256": "bfc597e88f9b97b8eec9fd36227ef0d079fdf1c32e8bea84c3b1e77fb7a6b05c",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/base/demo.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/base/help.data.gz",
+      "size": 2511861,
+      "sha256": "e4a0693036df11c25f411eb54dc6c457b2ca0ad7b54a31a5777669c42873fbc5",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/base/help.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/base/help.js.metadata",
+      "size": 318,
+      "sha256": "f0dc200e500da582c1f3c486719755231708fc34ec79697350bd5fd32d10baa2",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/base/help.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/base/html.data.gz",
+      "size": 20896,
+      "sha256": "4579ec6454cf8ad0ea328b24ffa9932b5048406bbcf2bfbdc37f262d4a72623d",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/base/html.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/base/html.js.metadata",
+      "size": 155,
+      "sha256": "4826bdd7ba15568d7ab5226c92b1d742bcd3f4ce853300f55bf205a5f8e22d02",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/base/html.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/compiler/help.data.gz",
+      "size": 9707,
+      "sha256": "5730990fa55a61c00be088a4346d840ce5e4c408a3039d863b2d2a9d7a04b01d",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/compiler/help.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/compiler/help.js.metadata",
+      "size": 300,
+      "sha256": "93964f4b0aa52bfe289dde2a3924ec8c2675811261e597029d337cfc3022009e",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/compiler/help.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/compiler/html.data.gz",
+      "size": 1227,
+      "sha256": "897845e87e57530fb1217751935190ae024368107c3e57a2d82cbe660b07fd55",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/compiler/html.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/compiler/html.js.metadata",
+      "size": 147,
+      "sha256": "98d18997c393881d285172dcb2414da928192520af6aba215667f0a93b0da54d",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/compiler/html.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/datasets/help.data.gz",
+      "size": 271084,
+      "sha256": "dad977fdb79232304c24856392b344cf5b0fef1e03fb87bcd0ff80b395634887",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/datasets/help.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/datasets/help.js.metadata",
+      "size": 316,
+      "sha256": "2c75a99df17927ff9822757c7b921959b7ddc89b1559d2977dc5644b5832e140",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/datasets/help.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/datasets/html.data.gz",
+      "size": 4458,
+      "sha256": "e31fd3173c02e7fc71b14aac2fcde9faeb6b4fbb71fe74a533b923453fb71e49",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/datasets/html.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/datasets/html.js.metadata",
+      "size": 151,
+      "sha256": "c9c5e5bafee1c03be04d2867f44923e0fa74791bbc51ccbb8d3ff5579bb5e211",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/datasets/html.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grDevices/afm.data.gz",
+      "size": 954539,
+      "sha256": "0ccde05635be0c4750cc4ff9013369b0735286f62e20b9e7c80ff2642e6851e8",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grDevices/afm.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grDevices/afm.js.metadata",
+      "size": 6816,
+      "sha256": "3e88061dfecc14c6cd1386be85d4fef59fe1f964312db41903e471ed74e7cf02",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grDevices/afm.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grDevices/demo.data.gz",
+      "size": 2513,
+      "sha256": "4a629cd134001c687f650e16ddbd6fa6bb871f029f61dca07f167d814b8f4045",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grDevices/demo.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grDevices/demo.js.metadata",
+      "size": 149,
+      "sha256": "2a51924eaee18cbe41bfe8f11ae70f083748d97ef5cbbb77bd3c3a133eaad471",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grDevices/demo.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grDevices/enc.data.gz",
+      "size": 4263,
+      "sha256": "dab4dcbbb54468bd4005060c192e745c1daf696f60a3714306d3c4c4eb438b59",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grDevices/enc.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grDevices/enc.js.metadata",
+      "size": 960,
+      "sha256": "fd6fb479b499da19fe442318ac147bdda2557a087ff19acda5a220fbe6686617",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grDevices/enc.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grDevices/fonts.data.gz",
+      "size": 272539,
+      "sha256": "d8f1224b1707d4f27de3d761a42c5d153dea9772e1b7fbed93bf36f47a747708",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grDevices/fonts.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grDevices/fonts.js.metadata",
+      "size": 352,
+      "sha256": "a59f1e81fa5a21f6b6fb91b6a51ad9944cff3283d5891c9427a3702573b6d65c",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grDevices/fonts.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grDevices/help.data.gz",
+      "size": 425947,
+      "sha256": "cdaaaa8c20182790e7bb60d4dd30057be52218abc295bcd155b6f7035f005cda",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grDevices/help.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grDevices/help.js.metadata",
+      "size": 318,
+      "sha256": "37a4e73e4cd6e4e65da29823e0d14242f1b4610b2cb50ea513375c40f8d9b146",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grDevices/help.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grDevices/html.data.gz",
+      "size": 4188,
+      "sha256": "0a44b02467c05849eabdb81336576ed5f06212da74fa2aa45ad86c304fb27059",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grDevices/html.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grDevices/html.js.metadata",
+      "size": 151,
+      "sha256": "3a2b36bad1509df1912e194322e133c7f362ae7cade8c178e9fbfe88da0a0c83",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grDevices/html.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grDevices/libs.data.gz",
+      "size": 1567713,
+      "sha256": "33c7af2192e377733d432e0abf58f72dc1673ebdc5637fc219cd0851a66ae712",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grDevices/libs.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grDevices/libs.js.metadata",
+      "size": 103,
+      "sha256": "5b8346c8e3ba79d6e849dd66accb58ab3d4c159ee79f5be06a766a480c3d1d00",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grDevices/libs.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/graphics/demo.data.gz",
+      "size": 13138,
+      "sha256": "45409e4ceabdcc79a6ec814384256f56b70ebc9b325c126d97875d1db4425939",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/graphics/demo.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/graphics/demo.js.metadata",
+      "size": 359,
+      "sha256": "1128fef779f40452d0dd2b27b3974175fb4a341c3418d953d8b33540575117fd",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/graphics/demo.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/graphics/help.data.gz",
+      "size": 538417,
+      "sha256": "5a239ff8c5678784d694d9d1f62c400964ac37a6b15a33ee42f4a1d015c5117a",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/graphics/help.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/graphics/help.js.metadata",
+      "size": 720,
+      "sha256": "c5072cbdb51abdff678a6f2da040f9f1549517dff838ffb6a3627a79fff9ba64",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/graphics/help.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/graphics/html.data.gz",
+      "size": 2982,
+      "sha256": "a00624c556ad53eec4be09ec2f1867a53aa6f42f009a2a6ab38e7f1083a8d857",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/graphics/html.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/graphics/html.js.metadata",
+      "size": 151,
+      "sha256": "bb82dd2024e800abf3d390c3f21f44e189ebe3df567a0de974e95206f7edef7d",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/graphics/html.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grid/doc.data.gz",
+      "size": 584898,
+      "sha256": "c29f5d8a339d863cffe7ba34ab1fd03005d3d1fec3a1f2cd932f3fe3442b7b7b",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grid/doc.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grid/doc.js.metadata",
+      "size": 896,
+      "sha256": "14924ac9389ed973b16d0f3e5cb30e49b6629db3f2f4c8e0ab36908bec1bac0b",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grid/doc.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grid/help.data.gz",
+      "size": 329030,
+      "sha256": "fe773ef97ed8849be24544af09b105b5daf67d8a9f1e8b393f9863fe957675be",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grid/help.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grid/help.js.metadata",
+      "size": 308,
+      "sha256": "6bc06355bda1ee3d98555ea8f05f267614d72cceaab763b1457a7f5213ad556b",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grid/help.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grid/html.data.gz",
+      "size": 4928,
+      "sha256": "e3119ee9a956bdd0f6b56b31f03742ad621385c16e927ee1687d59fd9f9ba5a2",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grid/html.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/grid/html.js.metadata",
+      "size": 151,
+      "sha256": "3d28487a22ea049d3c6329a9cebb0d310e3d4206647a517cb40ab21bc5662e1d",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/grid/html.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/methods/help.data.gz",
+      "size": 536064,
+      "sha256": "7d0df9d18461ca6a2cf6d7ac639084d5a4c8ad1aa8205388b566b74006629cad",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/methods/help.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/methods/help.js.metadata",
+      "size": 318,
+      "sha256": "fa1d8add1af79162283bd470e57172723c3793dabfcebb5586cb4f083d61e74f",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/methods/help.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/methods/html.data.gz",
+      "size": 5271,
+      "sha256": "1c65e1603a7b3299305dc2180ccf5c32bb5b9e698e58e33c2f1d04d8049ebef2",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/methods/html.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/methods/html.js.metadata",
+      "size": 151,
+      "sha256": "a63e96038c66042226f488d3ac8f54cbea74bda22febf593965e2bede552c73a",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/methods/html.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/parallel.data.gz",
+      "size": 344917,
+      "sha256": "f75b49eb3246b6e37fa44eddee3363c13098af6843147548dbfda93dead27871",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/parallel.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/parallel.js.metadata",
+      "size": 1238,
+      "sha256": "67211b593e70743c68012a2c719fbc42e713022fe80ac02864692cef6d95bbd2",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/parallel.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/splines/help.data.gz",
+      "size": 42649,
+      "sha256": "79294e90ae16eca76405809ee8bda91fc6e6a7a78e2b2ab00f4f063520a712a2",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/splines/help.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/splines/help.js.metadata",
+      "size": 302,
+      "sha256": "485150c2fa4eb87e2f3eb90e5e36c8e1fdd460fa70a80bf1196a6baf9710fe3e",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/splines/help.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/splines/html.data.gz",
+      "size": 1550,
+      "sha256": "732490b1dcb283d3b18b4a53cdb2efd64a58b094e3dea8bbc335e4e3339fa2f5",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/splines/html.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/splines/html.js.metadata",
+      "size": 147,
+      "sha256": "55921a910bdb3d7cb2d2db24dff9e57ddbe4d5670fc54c3ce0c70da6112d6cef",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/splines/html.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/stats/demo.data.gz",
+      "size": 4061,
+      "sha256": "48eb11bfd6de6b0fb7934ef93f7b2daf241ebe1801a2185a80d602d9ebf823b9",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/stats/demo.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/stats/demo.js.metadata",
+      "size": 241,
+      "sha256": "7e537450a6855a02f5491cf22f48abed526bb1d4d2fd15d3e34725ab3667db5f",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/stats/demo.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/stats/doc.data.gz",
+      "size": 50072,
+      "sha256": "07f28e89e59a9c583855e5a3b15ae2f8d2500e2fdb88d70347c7fd5f4bb5ec5c",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/stats/doc.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/stats/doc.js.metadata",
+      "size": 102,
+      "sha256": "671b514c960e5f91023a8003a690918ae84ac97a4c3bc123f391e51b582c0c66",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/stats/doc.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/stats/help.data.gz",
+      "size": 1763439,
+      "sha256": "26580d3a64f0d1ef2bf0750abefe6b2e340fa3748edd83a935f83c6bd6a80b16",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/stats/help.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/stats/help.js.metadata",
+      "size": 316,
+      "sha256": "e275fdec353dfb60a2ad81eb8af243bc0a0571d8063131ad48a9a13e34b6a841",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/stats/help.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/stats/html.data.gz",
+      "size": 11356,
+      "sha256": "d64f507201ec404241c52a249d82a0c405af5fd801fde7295ac9c5675fb4412f",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/stats/html.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/stats/html.js.metadata",
+      "size": 151,
+      "sha256": "9ea60d805483f4ebfb197957da1c7c360a00c92d4b33fcc7fda42f9ee626cd7d",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/stats/html.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/stats4/help.data.gz",
+      "size": 35887,
+      "sha256": "aeac30b7f93b6815b457dc60b5335026c71f0a491bba70a0475fa827385822bd",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/stats4/help.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/stats4/help.js.metadata",
+      "size": 304,
+      "sha256": "24ef27e1f6b04a404ef243de7fc7aa538c840df0199bcc1ab439bb6db307fc5d",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/stats4/help.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/stats4/html.data.gz",
+      "size": 1522,
+      "sha256": "a504d40cef56496a3390db9db7592e271a3b9398d7b14ffb6fb32e8ad994ad32",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/stats4/html.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/stats4/html.js.metadata",
+      "size": 147,
+      "sha256": "c34ccf9f0de1ad19d6aea15b3f56e6f65c8967bd8c9a9e39461788daa5c1d15e",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/stats4/html.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/tcltk.data.gz",
+      "size": 129172,
+      "sha256": "c35308fd826c2f4bda98037c71ca67d74410576c65a1065dfa93831f3721f16a",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/tcltk.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/tcltk.js.metadata",
+      "size": 2019,
+      "sha256": "64da424ea73e83095916fddc9eb8c483e272400a0bed4df60850467a7c1ac27a",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/tcltk.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/tools/help.data.gz",
+      "size": 309664,
+      "sha256": "bbde15e7c249d8eb1e54b23062238ec1ce9934d2a4fe60ee5d1b199e613dde8b",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/tools/help.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/tools/help.js.metadata",
+      "size": 306,
+      "sha256": "05838662fa13891db8641aae0333c365b7c79d83b4b21d629de6c657b51037c1",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/tools/help.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/tools/html.data.gz",
+      "size": 4307,
+      "sha256": "f4a02070d6945b6919ebd8ef613bb93fc850d2b710fefa2da3179a8583640a9a",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/tools/html.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/tools/html.js.metadata",
+      "size": 151,
+      "sha256": "d93471df33f8c83582f3c217fdaad9c0947996bc87c19e2261828e01bcb668c3",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/tools/html.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/tools/misc.data.gz",
+      "size": 3734,
+      "sha256": "2a5f735e737e5d96763b1e361563034035b7b89ba2571bd8688e3de0ead845d8",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/tools/misc.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/tools/misc.js.metadata",
+      "size": 142,
+      "sha256": "5aa3e8a1a8d2ccde0b57e923e98a9738c73f1c099aa9b3fcab7b1e3b3f30e28a",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/tools/misc.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/translations/DESCRIPTION",
+      "size": 238,
+      "sha256": "ba7da3ac60466f5f466c4f706f50bcafbb924f94b0888d333bb410451b41afd2",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/translations/DESCRIPTION"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/translations.data.gz",
+      "size": 3060278,
+      "sha256": "b422e6f652085eae4afed6ce9fd06fc4065f123ea29ef1a0a6487156e4140051",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/translations.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/translations.js.metadata",
+      "size": 35184,
+      "sha256": "94c12d799400af540c77df4c9648a2f077d615858dd9dbc61a59671b1e6450fa",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/translations.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/utils/doc.data.gz",
+      "size": 217228,
+      "sha256": "39731024a78e984dccdaa189e9bfb09abeed44901a1263e53b28df423a110e52",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/utils/doc.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/utils/doc.js.metadata",
+      "size": 103,
+      "sha256": "189fd98b3cda5d4a11c7da6780649ddecce9a5fd5b9d472a075f49909a6956c3",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/utils/doc.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/utils/help.data.gz",
+      "size": 851986,
+      "sha256": "6d5b21436d46a07ddc8271774a110805c20f2cf61d77399355df908edc608277",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/utils/help.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/utils/help.js.metadata",
+      "size": 310,
+      "sha256": "429364cd219cdf5b04caaf01b061e882df28f3290ddc2e39fc9f1dbc61a957f1",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/utils/help.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/utils/html.data.gz",
+      "size": 7224,
+      "sha256": "4184d3d649ff11b59cf941d336503d6618a461d12232eb605b8da687c8b96e81",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/utils/html.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/utils/html.js.metadata",
+      "size": 151,
+      "sha256": "9237b38d0bb9cd04c6f305f9b69b7d06b2dcaf982050e3d3e374e6cdfe0706a1",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/utils/html.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/utils/misc.data.gz",
+      "size": 161,
+      "sha256": "445630e53849008e9aaab4cfac4c82dec564b8d9dfc96233f30fc58be819fac4",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/utils/misc.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/utils/misc.js.metadata",
+      "size": 142,
+      "sha256": "7e248a6c0ce276772fe22eb83d49128393be9e674e322ab0ce57905e83e6709b",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/utils/misc.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/webr/help.data.gz",
+      "size": 56957,
+      "sha256": "62c2cc5698c311dc441d6dff8df0360f6938d0a3106ceabd933a02ed611b8543",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/webr/help.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/webr/help.js.metadata",
+      "size": 357,
+      "sha256": "6be65afdfa115d602a97e84eb64edd4ef6e73f805acca3cf0f04a87cbf0401a5",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/webr/help.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/webr/html.data.gz",
+      "size": 1701,
+      "sha256": "c838522a1a3f32b333a40df2ed43a3aab8aaa79a1d64d7695e8b735c94b8978d",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/webr/html.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/library/webr/html.js.metadata",
+      "size": 147,
+      "sha256": "670e8f95950e34d4ccb19827a1463137f496638fa6a002a3ed397f203636d410",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/library/webr/html.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/share.data.gz",
+      "size": 379293,
+      "sha256": "ab1f8aa801570efd63d27596f1fd489271225b17e5d3cba1a1d68350e05f6dd2",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/share.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/lib/R/share.js.metadata",
+      "size": 46073,
+      "sha256": "b38b185d1c1aef197dca60b103bee24b3914bb144bf0fc6c8d6db1af1f1523a9",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/lib/R/share.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/share/fonts/NotoSans-Bold.ttf",
+      "size": 432376,
+      "sha256": "87cb2d84472a7d66da659ee47b6cdb9552326e8c128245231f191b6ac72529d9",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/share/fonts/NotoSans-Bold.ttf"
+    },
+    {
+      "path": "webr/vfs/usr/share/fonts/NotoSans-BoldItalic.ttf",
+      "size": 441936,
+      "sha256": "3d367743f371f28671d2764e911a53d7c20ec9b6aa8791d059e7090389fc52a5",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/share/fonts/NotoSans-BoldItalic.ttf"
+    },
+    {
+      "path": "webr/vfs/usr/share/fonts/NotoSans-Italic.ttf",
+      "size": 446880,
+      "sha256": "678288f868807d4d64a6f3b51466871d117d915780381ce9d0ed4b3bcbd06d37",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/share/fonts/NotoSans-Italic.ttf"
+    },
+    {
+      "path": "webr/vfs/usr/share/fonts/NotoSans-Regular.ttf",
+      "size": 431364,
+      "sha256": "f3961a9cde016d41a4879aecda1474d3a36d6bf54fa0e4643de029cc2248b0e8",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/share/fonts/NotoSans-Regular.ttf"
+    },
+    {
+      "path": "webr/vfs/usr/share/fonts/NotoSansMono-Bold.ttf",
+      "size": 387484,
+      "sha256": "1100772b2f79c102402a1011df5e2226517d0f40ac553a25fb12fdbad8c11b85",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/share/fonts/NotoSansMono-Bold.ttf"
+    },
+    {
+      "path": "webr/vfs/usr/share/fonts/NotoSansMono-Regular.ttf",
+      "size": 388660,
+      "sha256": "87f8ce0522a6c99b743ee5fc75b4073cfdd575639119672828b7b9944b65b4f4",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/share/fonts/NotoSansMono-Regular.ttf"
+    },
+    {
+      "path": "webr/vfs/usr/share/fonts/NotoSerif-Bold.ttf",
+      "size": 481892,
+      "sha256": "24ad531e6b05ddad8c3d89572d2c93eb86a6b74e652ce7ee3c3e171de68e84c3",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/share/fonts/NotoSerif-Bold.ttf"
+    },
+    {
+      "path": "webr/vfs/usr/share/fonts/NotoSerif-BoldItalic.ttf",
+      "size": 513280,
+      "sha256": "1bc4f86502eaa368718f6192bee022ea9a703d5af1c18b7d291212657b63074a",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/share/fonts/NotoSerif-BoldItalic.ttf"
+    },
+    {
+      "path": "webr/vfs/usr/share/fonts/NotoSerif-Italic.ttf",
+      "size": 513428,
+      "sha256": "c4b3c971741ecdb40f5a443bce754e8fe91efe761b6ea10c92be7c3597cdadc4",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/share/fonts/NotoSerif-Italic.ttf"
+    },
+    {
+      "path": "webr/vfs/usr/share/fonts/NotoSerif-Regular.ttf",
+      "size": 482540,
+      "sha256": "a15cfbbc1539d707115111d672d590a3d70d4f74b4c0a315956da20ae19a14e1",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/share/fonts/NotoSerif-Regular.ttf"
+    },
+    {
+      "path": "webr/vfs/usr/share/gdal.data.gz",
+      "size": 347078,
+      "sha256": "419232a8b1c602c52f22e78384077e823185a15c9072d51aa9a5ec2569570757",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/share/gdal.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/share/gdal.js.metadata",
+      "size": 10206,
+      "sha256": "de403ded38013ab57931a862d14bcdc33b09997c70de1587ec6719f94360ab25",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/share/gdal.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/share/proj.data.gz",
+      "size": 1723280,
+      "sha256": "c4dd2ea881e6a43050d46177c495a1e174c4103d13304e20a418e5bdcfe48c10",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/share/proj.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/share/proj.js.metadata",
+      "size": 857,
+      "sha256": "2f3c8a4a48ebaf9345ee83f7085454e748a221cf7e6a46653154d13c892229ee",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/share/proj.js.metadata"
+    },
+    {
+      "path": "webr/vfs/usr/share/udunits.data.gz",
+      "size": 16747,
+      "sha256": "3dc76714ae0511f6d787bcbe6d31ec22e50613e57ca6f2bfb462b4096b6b02cc",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/share/udunits.data.gz"
+    },
+    {
+      "path": "webr/vfs/usr/share/udunits.js.metadata",
+      "size": 424,
+      "sha256": "9f8ac349f1d68c23e4d2a4790e328ab3ecc38cd84ef993592170b7d19ef1b6a6",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/usr/share/udunits.js.metadata"
+    },
+    {
+      "path": "webr/vfs/var/cache/fontconfig/3830d5c3ddfd5cd38a049b759396e72e-le32d8.cache-9",
+      "size": 16008,
+      "sha256": "b6104258bf20ce179212466ca86ebb1c1e145323c59f59b53d69abacb0db8f58",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/var/cache/fontconfig/3830d5c3ddfd5cd38a049b759396e72e-le32d8.cache-9"
+    },
+    {
+      "path": "webr/vfs/var/cache/fontconfig/CACHEDIR.TAG",
+      "size": 200,
+      "sha256": "05e7633fb31bf1f6f8d89020c16b9f24587fdf7638e951c9745b192f5fc3b682",
+      "archive": "webr",
+      "member": "webr-0.6.1/vfs/var/cache/fontconfig/CACHEDIR.TAG"
+    },
+    {
+      "path": "webr/webr-worker.js",
+      "size": 134057,
+      "sha256": "0eed71964987fac61c9111d0ebc6d10ad6976d330ece5dd56ef8377bd5705d02",
+      "archive": "webr",
+      "member": "webr-0.6.1/webr-worker.js"
+    },
+    {
+      "path": "webr/webr.mjs",
+      "size": 66758,
+      "sha256": "991886c16dae2aa583b8d004dec840324f69dbae3f6c62c1056d239bb5cace5e",
+      "archive": "webr",
+      "member": "webr-0.6.1/webr.mjs"
+    },
+    {
+      "path": "python/LICENSE-CPython",
+      "size": 13936,
+      "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf",
+      "url": "https://raw.githubusercontent.com/python/cpython/v3.12.7/LICENSE"
+    },
+    {
+      "path": "python/LICENSE-Pyodide",
+      "size": 16725,
+      "sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5",
+      "url": "https://raw.githubusercontent.com/pyodide/pyodide/0.27.7/LICENSE"
+    },
+    {
+      "path": "python/ffi.d.ts",
+      "size": 44144,
+      "sha256": "2ddc77394afa23784ade388d52ab8119f3cd713994a67b489abd9fe13b24964d",
+      "archive": "python",
+      "member": "pyodide/ffi.d.ts"
+    },
+    {
+      "path": "python/package.json",
+      "size": 3267,
+      "sha256": "bf221f60c881626236d3501375a97753672a7fa6fed70e469e083f157c8a30d4",
+      "archive": "python",
+      "member": "pyodide/package.json"
+    },
+    {
+      "path": "python/pyodide-lock.json",
+      "size": 112205,
+      "sha256": "9c45b916001a750f4102fc287494f3eab215909c7535c626a20db80fd6333e2c",
+      "archive": "python",
+      "member": "pyodide/pyodide-lock.json"
+    },
+    {
+      "path": "python/pyodide.asm.js",
+      "size": 1255688,
+      "sha256": "6b4c90de5b7172873f04f21884d0e9d2274e305fe32116558fe3e4fbe3618d51",
+      "archive": "python",
+      "member": "pyodide/pyodide.asm.js"
+    },
+    {
+      "path": "python/pyodide.asm.wasm",
+      "size": 10105545,
+      "sha256": "a50dd1843f805a0b7c45b61037ee0d7b26dfe85efe0e18ef95a34ad24e401f5f",
+      "archive": "python",
+      "member": "pyodide/pyodide.asm.wasm"
+    },
+    {
+      "path": "python/pyodide.d.ts",
+      "size": 63609,
+      "sha256": "52c4f118d0563b3130520ab6034670fb53ed13837d9b8be6aa0906b76488f8d0",
+      "archive": "python",
+      "member": "pyodide/pyodide.d.ts"
+    },
+    {
+      "path": "python/pyodide.js",
+      "size": 14913,
+      "sha256": "b4cb23a53aba19c221659b9fb40a2f18281d685691dc06647fb0afd0681baf98",
+      "archive": "python",
+      "member": "pyodide/pyodide.js"
+    },
+    {
+      "path": "python/pyodide.mjs",
+      "size": 13931,
+      "sha256": "04c052c815abb0bf2981fa38c2dfa58e3120ee5288c956df2b2a15e301782c5f",
+      "archive": "python",
+      "member": "pyodide/pyodide.mjs"
+    },
+    {
+      "path": "python/python_stdlib.zip",
+      "size": 2360737,
+      "sha256": "16611534726e5d8ac2bd8f926410b2dcb8d6f49aa24913463533b457a2115c16",
+      "archive": "python",
+      "member": "pyodide/python_stdlib.zip"
+    }
+  ]
+}
