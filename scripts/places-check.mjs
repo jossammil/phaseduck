@@ -52,6 +52,8 @@ const output = await mkdtemp(resolve(tmpdir(), "phase-places-"));
 const runners = [];
 const button = (page, name) => page.getByRole("button", { name, exact: true }).first();
 const selectScene = (page, id) => page.locator(`[data-id="${id}"]`).click();
+const checkBox = (page, name) => page.getByRole("checkbox", { name, exact: true });
+const hiddenExit = (page) => page.locator("#unfocus").evaluate((node) => getComputedStyle(node).clipPath !== "none");
 async function openFile(page, name, file) {
   const expected = page.waitForEvent("filechooser");
   await button(page, name).click();
@@ -59,7 +61,7 @@ async function openFile(page, name, file) {
 }
 
 function tone() {
-  const count = 8000 * 6;
+  const count = 8000 * 12;
   const data = Buffer.alloc(44 + count * 2);
   data.write("RIFF"); data.writeUInt32LE(data.length - 8, 4);
   data.write("WAVEfmt ", 8); data.writeUInt32LE(16, 16);
@@ -71,11 +73,157 @@ function tone() {
   return { name: "test.wav", mimeType: "audio/wav", buffer: data };
 }
 
+async function focusOptions(page, settings) {
+  await button(page, "Focus view").click();
+  if (settings === "artwork") await button(page, "Artwork only").click();
+  else for (const [name, checked] of Object.entries(settings)) await checkBox(page, name).setChecked(checked);
+  await page.evaluate(() => { window.sceneText = []; });
+  await button(page, "Enter Focus").click();
+}
+
+async function saveStill(page, name, orientation) {
+  await page.getByLabel("Export orientation").selectOption(orientation);
+  const download = page.waitForEvent("download");
+  await button(page, "Download PNG").click();
+  const filename = resolve(output, `${name}-${orientation}.png`);
+  await (await download).saveAs(filename);
+  const png = await readFile(filename);
+  const size = orientation === "portrait" ? [2160, 3840] : [3840, 2160];
+  assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], size);
+  return png;
+}
+
+async function checkTouchFocus(browser, base) {
+  const page = await browser.newPage({ viewport: { width: 390, height: 780 }, hasTouch: true, reducedMotion: "reduce" });
+  await page.goto(base);
+  await button(page, "Focus view").click();
+  await button(page, "Enter Focus").click();
+  assert.ok(await hiddenExit(page));
+  const box = await page.locator("#frame").boundingBox();
+  await page.touchscreen.tap(box.x + 24, box.y + 19);
+  await page.locator("#unfocus.revealed").waitFor();
+  assert.equal(await hiddenExit(page), false);
+  await button(page, "Exit Focus").tap();
+  await button(page, "Focus view").waitFor();
+  await page.close();
+}
+
+async function checkMusicThemes(page, name) {
+  const stage = page.locator("#art");
+  const corner = (canvas) => canvas.evaluate((node) => Array.from(node.getContext("2d").getImageData(0, 0, 1, 1).data));
+  await button(page, "Pause motion").click();
+  await focusOptions(page, "artwork");
+  assert.deepEqual(await page.evaluate(() => window.sceneText), []);
+  await page.keyboard.press("Escape");
+  await button(page, "Music input").click();
+  const theme = page.getByLabel("Music theme pack", { exact: true });
+  const aesthetic = page.getByLabel("Music aesthetic", { exact: true });
+  const palette = page.getByLabel("Music palette", { exact: true });
+  const graphite = [23, 24, 27, 255];
+  const phosphor = [6, 19, 15, 255];
+  await theme.selectOption("phosphor");
+  assert.deepEqual(await corner(stage), phosphor);
+  const differentPaints = new Set();
+  for (const style of ["waveform", "spectrum", "ribbons", "history"]) {
+    await aesthetic.selectOption(style);
+    differentPaints.add(await stage.evaluate((node) => node.toDataURL()));
+  }
+  assert.equal(differentPaints.size, 4);
+  await palette.selectOption("warm");
+  await theme.selectOption("graphite");
+  assert.equal(await palette.inputValue(), "warm");
+  assert.deepEqual(await corner(stage), graphite);
+  await palette.selectOption("theme");
+  await page.reload();
+  await selectScene(page, "music");
+  await button(page, "Music input").click();
+  assert.equal(await theme.inputValue(), "graphite");
+  assert.equal(await aesthetic.inputValue(), "history");
+  await button(page, "Close panel").click();
+
+  await button(page, "Compose").click();
+  const layerTheme = page.getByLabel("Layer theme pack", { exact: true });
+  assert.equal(await layerTheme.inputValue(), "graphite");
+  const musicLayers = page.getByRole("img", { name: "Music Visualizer", exact: true });
+  await page.getByLabel("Layer type").selectOption("music");
+  await button(page, "Add layer").click();
+  await layerTheme.selectOption("phosphor");
+  assert.deepEqual(await corner(musicLayers.first()), graphite);
+  assert.deepEqual(await corner(musicLayers.last()), [0, 0, 0, 0]);
+  await checkBox(page, "Background").check();
+  assert.deepEqual(await corner(musicLayers.last()), phosphor);
+  await page.getByLabel("Layer type").selectOption("job-card");
+  await button(page, "Add layer").click();
+  await button(page, "Explore data").click();
+  await openFile(page, "Open CSV or Parquet", {
+    name: "bins.csv", mimeType: "text/csv", buffer: Buffer.from("reading\n1\n2\n3\n"),
+  });
+  await page.getByLabel("Numeric field").selectOption("reading");
+  await button(page, "Add histogram layer").click();
+  await focusOptions(page, "artwork");
+  assert.equal(await page.locator(".job-layer").isVisible(), false);
+  assert.equal(await page.locator(".histogram figcaption").isVisible(), false);
+  assert.ok((await page.locator(".histogram-bars").boundingBox()).height > 0);
+  assert.deepEqual(await page.evaluate(() => window.sceneText), []);
+  await page.keyboard.press("Escape");
+  assert.ok(await page.locator(".job-layer").isVisible());
+  const compositionName = page.getByLabel("Composition name");
+  await compositionName.fill("Music Studio");
+  await button(page, "Save composition").click();
+  await page.evaluate(() => {
+    const key = "phase-deck-compositions";
+    const records = JSON.parse(localStorage.getItem(key));
+    const original = records.find(({ name }) => name === "Music Studio");
+    const layer = structuredClone(original.layers[0]);
+    delete layer.music.theme;
+    layer.music.palette = "warm";
+    records.push({ ...original, id: crypto.randomUUID(), name: "Original music layer", layers: [layer] });
+    localStorage.setItem(key, JSON.stringify(records));
+  });
+  await page.reload();
+  await button(page, "Compose").click();
+  await button(page, "Saved compositions").click();
+  await button(page, "Original music layer").click();
+  assert.equal(await layerTheme.inputValue(), "classic");
+  assert.equal(await page.getByLabel("Layer palette").inputValue(), "warm");
+  await button(page, "Saved compositions").click();
+  await button(page, "Music Studio").click();
+  assert.deepEqual(await corner(musicLayers.first()), graphite);
+  assert.deepEqual(await corner(musicLayers.last()), phosphor);
+  await button(page, "Export 4K still").click();
+  for (const orientation of ["landscape", "portrait"]) {
+    const png = await saveStill(page, name + "-music", orientation);
+    const pixel = await page.evaluate(async (base64) => {
+      const image = new Image();
+      image.src = "data:image/png;base64," + base64;
+      await image.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 1;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(image, 0, 0);
+      return Array.from(ctx.getImageData(0, 0, 1, 1).data);
+    }, png.toString("base64"));
+    assert.deepEqual(pixel, graphite);
+  }
+  await button(page, "Close panel").click();
+}
+
 async function check(browser, base, name) {
   const page = await browser.newPage({ viewport: { width: 1360, height: 820 }, acceptDownloads: true, reducedMotion: "no-preference" });
   page.setDefaultTimeout(12000);
+  await page.addInitScript(() => {
+    const fillText = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
+      if (this.canvas.closest?.(".focus .frame")) window.sceneText?.push(text);
+      return fillText.call(this, text, ...args);
+    };
+  });
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
+  const mapRequests = [];
+  page.on("request", (request) => {
+    if (/maps\.googleapis\.com|maps\.gstatic\.com/.test(request.url())) mapRequests.push(request.url());
+  });
   let offlineRadar = false, radarRequests = 0;
   await page.route("https://mesonet.agron.iastate.edu/**", (route) => {
     radarRequests++;
@@ -96,6 +244,36 @@ async function check(browser, base, name) {
   await button(page, "Close panel").click();
   await button(page, "Next").click();
   assert.match(await page.locator("#detail").innerText(), /13:30:00 UTC/);
+
+  await button(page, "Pause motion").click();
+  await focusOptions(page, { "Title and category": false });
+  assert.equal(await page.locator(".scene-head").isVisible(), false);
+  assert.ok(await page.locator(".readout").isVisible());
+  assert.ok(await page.evaluate(() => window.sceneText.includes("50 dBZ")));
+  assert.ok(await hiddenExit(page));
+  await page.keyboard.press("Tab");
+  assert.equal(await page.evaluate(() => document.activeElement.id), "unfocus");
+  assert.equal(await hiddenExit(page), false);
+  await page.keyboard.press("Escape");
+  assert.equal(await page.evaluate(() => document.activeElement.id), "focus");
+  await focusOptions(page, { "Title and category": true, "Live readout": false });
+  assert.ok(await page.locator(".scene-head").isVisible());
+  assert.equal(await page.locator(".readout").isVisible(), false);
+  await page.keyboard.press("Escape");
+  await focusOptions(page, "artwork");
+  assert.equal(await page.locator(".scene-head").isVisible(), false);
+  assert.equal(await page.locator(".readout").isVisible(), false);
+  assert.deepEqual(await page.evaluate(() => window.sceneText), []);
+  await page.keyboard.down("o");
+  await page.getByRole("heading", { name: "Observed radar", exact: true }).waitFor();
+  await page.keyboard.press("Escape");
+  await page.locator("#panel").waitFor({ state: "hidden" });
+  assert.equal(await button(page, "Focus view").isVisible(), false);
+  await page.keyboard.up("o");
+  await page.keyboard.press("Escape");
+  await button(page, "Focus view").waitFor();
+  await button(page, "Resume motion").click();
+
   await page.getByLabel("Radar source", { exact: true }).selectOption("live");
   await page.getByText("Live observation", { exact: true }).waitFor();
   assert.ok(radarRequests >= 7);
@@ -118,21 +296,22 @@ async function check(browser, base, name) {
   await button(page, "Coastline").click();
   assert.equal(await page.getByLabel("Layer radar source").inputValue(), "archive");
   assert.equal(await page.getByLabel("Layer radar region").inputValue(), "gulf");
+  await button(page, "Focus view").click();
+  for (const label of ["Title and category", "Live readout", "Labels inside visuals"])
+    assert.equal(await checkBox(page, label).isChecked(), false);
+  await button(page, "Enter Focus").click();
+  assert.equal(await page.locator(".resize-layer").isVisible(), false);
+  await page.keyboard.press("Escape");
+  assert.ok(await page.locator(".resize-layer").isVisible());
+  assert.equal(await page.getByLabel("Composition name").inputValue(), "Coastline");
   await button(page, "Export 4K still").click();
-  for (const [orientation, dimensions] of [["landscape", [3840, 2160]], ["portrait", [2160, 3840]]]) {
-    await page.getByLabel("Export orientation").selectOption(orientation);
-    const download = page.waitForEvent("download");
-    await button(page, "Download PNG").click();
-    const filename = resolve(output, `${name}-${orientation}.png`);
-    await (await download).saveAs(filename);
-    const png = await readFile(filename);
-    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], dimensions);
-  }
+  await saveStill(page, name + "-radar", "landscape");
   await button(page, "Close panel").click();
   await button(page, "Exit canvas").click();
 
   await selectScene(page, "terrain");
   await page.getByText("Natchez and the Mississippi River", { exact: true }).waitFor();
+  await page.reload();
   await selectScene(page, "traffic-counts");
   await page.waitForFunction(() => document.querySelector("#detail").textContent.includes("Median vehicles per hour"));
   await openFile(page, "Open hourly counts CSV", { name: "traffic.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
@@ -141,7 +320,23 @@ async function check(browser, base, name) {
   const box = await canvas.boundingBox();
   await canvas.click({ position: { x: box.width * (0.085 + (0.92 - 0.085) * 6 / 23), y: box.height / 2 } });
   assert.match(await page.locator("#detail").innerText(), /Weekday 140 · Weekend 7 vehicles/);
-  await button(page, "Use bundled counts").click();
+  await button(page, "Compose").click();
+  await page.getByLabel("Composition name").fill("Traffic sample");
+  await button(page, "Save composition").click();
+  await page.reload();
+  await button(page, "Compose").click();
+  await button(page, "Saved compositions").click();
+  await button(page, "Traffic sample").click();
+  const trafficLayer = page.getByRole("img", { name: "Traffic Patterns", exact: true });
+  await trafficLayer.waitFor();
+  await button(page, "Hide editor").click();
+  const layerBox = await trafficLayer.boundingBox();
+  await trafficLayer.click({ position: { x: layerBox.width * (0.085 + (0.92 - 0.085) * 6 / 23), y: layerBox.height / 2 } });
+  await page.getByText(/Weekday 140 · Weekend 7 vehicles/).waitFor();
+  await button(page, "Close panel").click();
+  await page.reload();
+  await selectScene(page, "traffic-counts");
+  await page.waitForFunction(() => document.querySelector("#detail").textContent.includes("Median vehicles per hour"));
   assert.notEqual(await page.locator("#readout").innerText(), "Test 42");
 
   await selectScene(page, "music");
@@ -163,36 +358,15 @@ async function check(browser, base, name) {
     const detail = await page.locator("#detail").innerText();
     throw new Error(`${name} did not render spectral samples. ${detail}. ${errors.join(" ")}`, { cause: error });
   }
+  await checkMusicThemes(page, name);
   await page.setViewportSize({ width: 390, height: 780 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-
-  let mapsLoads = 0;
-  await page.route("https://maps.googleapis.com/**", (route) => {
-    mapsLoads++;
-    const key = new URL(route.request().url()).searchParams.get("key");
-    return route.fulfill({ contentType: "text/javascript", body: key?.startsWith("invalid")
-      ? "window.gm_authFailure();"
-      : `window.google = {maps: {importLibrary: async () => ({
-        Map: class { constructor(element, options) { element.textContent = 'Map at ' + options.center.lat; } },
-        TrafficLayer: class { setMap() { document.body.dataset.traffic = 'on'; } },
-      })}};
-      window.phaseDeckTrafficReady();`
-    });
-  });
-  await page.goto(base + "traffic.html");
-  await button(page, "Load traffic map").click();
-  assert.equal(mapsLoads, 0);
-  await page.getByLabel("Your Google Maps JavaScript API key").fill("invalid-test-key-no-service");
-  await button(page, "Load traffic map").click();
-  await page.getByText(/Google rejected this key/).waitFor();
-  await button(page, "Reload traffic view").click();
-  await page.getByLabel("Your Google Maps JavaScript API key").fill("valid-test-key-no-service");
-  await button(page, "Load traffic map").click();
-  await page.getByText("Map at 32.299", { exact: true }).waitFor();
-  assert.equal(await page.locator("body").getAttribute("data-traffic"), "on");
-  assert.equal(mapsLoads, 2);
+  await checkTouchFocus(browser, base);
+  assert.equal((await page.request.get(base + "traffic.html")).status(), 404);
+  assert.equal((await page.request.get(base + "traffic.js")).status(), 404);
+  assert.deepEqual(mapRequests, []);
   assert.deepEqual(errors, []);
-  console.log(name + " radar, composition persistence, 4K PNG, traffic counts, spectral history, and Maps UI passed");
+  console.log(name + " radar, offline traffic, Focus, themes, composition persistence, and 4K PNG passed");
 }
 
 try {

@@ -295,8 +295,22 @@ body.focus .work {
   position: absolute;
   right: 16px;
   top: 16px;
+  z-index: 4;
   font-size: 0.85rem;
 }
+#unfocus:not(:focus):not(.revealed) {
+  clip-path: inset(50%);
+  pointer-events: none;
+}
+.focus #frame:focus { outline: none; }
+[data-hide-focus-title] .scene-head,
+[data-hide-focus-readout] .readout,
+[data-hide-focus-labels] .histogram figcaption,
+[data-hide-focus-labels] .histogram-range,
+[data-hide-focus-labels] .job-layer { display: none; }
+[data-hide-focus-labels] .layer-content .histogram { grid-template-rows: minmax(0, 1fr); }
+.focus-options { display: grid; gap: 8px; }
+.focus-options label { display: flex; align-items: center; gap: 8px; }
 .focus .scene-head {
   opacity: 0.55;
 }
@@ -751,7 +765,6 @@ body.focus .studio-tools, body.focus #composition-editor { display: none; }
 }
 .ambient-display #ambient-controls:hover, .ambient-display #ambient-controls:focus-within { opacity: 1; }
 .ambient-display main, .ambient-display .work, .ambient-display .frame { min-height: 100dvh; }
-#unfocus { z-index: 4; }
 #ambient-jobs {
   position: absolute;
   z-index: 2;
@@ -778,23 +791,3 @@ body.focus .studio-tools, body.focus #composition-editor { display: none; }
   .ambient-display #ambient-controls { top: auto; bottom: 8px; }
   .ambient-display .readout { bottom: 55px; }
 }
-
-.traffic-page { min-height: 100dvh; }
-.traffic-page .top-actions { display: flex; align-items: center; }
-.traffic-view {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto 1fr;
-  min-height: calc(100dvh - 60px);
-}
-.traffic-intro { padding: clamp(18px, 4vw, 52px); }
-.traffic-intro h1 { margin: 0 0 5px; font-size: clamp(27px, 4vw, 44px); font-weight: 500; }
-.traffic-intro p { margin: 0 0 10px; }
-#traffic-key { display: grid; gap: 8px; margin-top: 24px; max-width: 520px; }
-#traffic-key input { min-width: min(260px, 75vw); }
-.traffic-intro.traffic-ready { padding-block: 12px; }
-.traffic-ready h1 { font-size: 1.18rem; }
-.traffic-ready p { margin: 0; }
-#traffic-status:not(:empty) { margin-top: 12px; }
-#live-traffic-map { min-height: 420px; }
-.studio-link { display: inline-flex; align-items: center; padding: 0.42rem 0.45rem; }

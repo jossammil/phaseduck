@@ -1,7 +1,7 @@
 import { paint, inspect } from "./art.mjs";
 import { histogram } from "./explorer.js";
 import { jobCard, jobMetrics, jobStatus, workActivity } from "./jobs.js";
-import { musicPalettes, musicStyles } from "./music.js";
+import { musicLayerSettings, musicPalettes, musicStyles, musicThemes } from "./music.js";
 import { targets } from "./signals.js";
 import { radarModes, radarRegions, radarSettings, radarStyles } from "./radar.js";
 
@@ -17,7 +17,7 @@ export function setupComposer(ui, options) {
   const sceneChoices = Object.entries(sceneDefs).map(([key, [name]]) => [key, name]);
   const types = [...sceneChoices, ["job-card", "Job status card"]];
   const views = new Map();
-  let working, remembered, selected, editing = false, gesture;
+  let working, remembered, selected, editing = false, presenting = false, gesture;
   let insertion = "silk";
   let settingsPane;
   let nameBox;
@@ -30,7 +30,7 @@ export function setupComposer(ui, options) {
     layer.kind === "histogram" ? "Histogram · " + layer.histogram.field :
       types.find(([kind]) => layer.kind === kind)?.[1] || layer.kind;
   const active = () => !!working;
-  const isEditing = () => editing && active();
+  const isEditing = () => editing && !presenting && active();
   const has = (kind) => !!working?.layers.some((layer) => layer.kind === kind && layer.visible);
   const visibleLayers = (kind) => (working?.layers || []).filter((layer) => layer.visible && layer.kind === kind);
   function make(kind, full = false, overrides = {}) {
@@ -85,6 +85,7 @@ export function setupComposer(ui, options) {
     handle.setAttribute("aria-label", "Resize " + layerName(layer));
     let context, job, chart;
     if (layer.kind === "job-card") {
+      box.classList.add("job-layer");
       job = jobCard(elt);
       content.append(job.card);
     } else if (layer.kind === "histogram") {
@@ -146,7 +147,7 @@ export function setupComposer(ui, options) {
     panel();
   };
 
-  function paintLayers(width, height) {
+  function paintLayers(width, height, hideLabels = false) {
     for (const layer of working?.layers || []) {
       if (!layer.visible) continue;
       const view = views.get(layer.id);
@@ -163,7 +164,7 @@ export function setupComposer(ui, options) {
         canvas.height = pixelsY;
       }
       view.context.setTransform(pixelsX / w, 0, 0, pixelsY / h, 0, 0);
-      paint(view.context, w, h, options.layerState(layer), layer.background);
+      paint(view.context, w, h, options.layerState(layer, hideLabels), layer.background);
     }
   }
 
@@ -256,6 +257,9 @@ export function setupComposer(ui, options) {
     const composition = saved().find((item) => item.id === key);
     if (!composition) return false;
     working = copyData(composition);
+    for (const layer of working.layers) {
+      if (layer.kind === "music") layer.music = musicLayerSettings(layer.music);
+    }
     selected = working.layers.at(-1)?.id;
     editing = edit;
     if (edit) buildPanel();
@@ -310,6 +314,7 @@ export function setupComposer(ui, options) {
       if (!sources.some(([value]) => value === layer.music.source)) sources.push([layer.music.source, "Saved live source · unavailable"]);
       items.append(
         label("Audio source", picker(sources, layer.music.source, (source) => change(layer, { music: { ...layer.music, source } }), "Layer audio source")),
+        label("Theme pack", picker(musicThemes, layer.music.theme, (theme) => change(layer, { music: { ...layer.music, theme } }), "Layer theme pack")),
         label("Aesthetic", picker(musicStyles, layer.music.style, (style) => change(layer, { music: { ...layer.music, style } }), "Layer aesthetic")),
         label("Palette", picker(musicPalettes, layer.music.palette, (palette) => change(layer, { music: { ...layer.music, palette } }), "Layer palette")),
         field("Sensitivity %", layer.music.sensitivity * 100, 25, 300, (sensitivity) => change(layer, { music: { ...layer.music, sensitivity: sensitivity / 100 } })),
@@ -427,5 +432,10 @@ export function setupComposer(ui, options) {
   }
 
   return { active, isEditing, has, visibleLayers, start, leave, show, add, saved, paint: paintLayers, paintStill,
+    setPresenting(value) {
+      presenting = value;
+      gesture = null;
+      if (active()) update();
+    },
     title: () => working?.name, refreshControls: panel };
 }

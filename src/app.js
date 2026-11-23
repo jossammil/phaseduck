@@ -7,6 +7,7 @@ import { dataExplorer } from "./explorer.js";
 import { setupJobs, jobMetrics, jobStatus } from "./jobs.js";
 import { setupComposer } from "./composer.js";
 import { setupAmbient } from "./ambient.js";
+import { setupFocus } from "./focus.js";
 import { profileTraffic } from "./traffic-counts.js";
 
 const $ = (id) => document.getElementById(id);
@@ -455,7 +456,6 @@ async function connect() {
     native = true;
     jobSnapshot(result);
     $("connection").textContent = "Mac companion · local";
-    $("google-traffic").href = "https://jossammil.github.io/phaseduck/traffic.html";
     updateReadout();
     if (!jobTimer) {
       jobTimer = setInterval(() => {
@@ -969,7 +969,7 @@ function draw() {
   if (state.scene === "rain") Object.assign(state, radarState());
   if (!paused && (state.scene === "music" || composer.has("music"))) state.audioFrames = music.read();
   if (composer.active()) {
-    composer.paint(w, h);
+    composer.paint(w, h, focus.hideLabels());
     if (measureFrames) window.dispatchEvent(new Event("phase-frame"));
     return;
   }
@@ -977,7 +977,7 @@ function draw() {
     selectedJob && state.scene === "jobs"
       ? { ...state, jobs: state.jobs.filter((j) => j.id === selectedJob) }
       : state;
-  paint(ctx, w, h, rendered);
+  paint(ctx, w, h, focus.hideLabels() ? { ...rendered, hideLabels: true } : rendered);
   if (measureFrames) window.dispatchEvent(new Event("phase-frame"));
 }
 function syncAudio() {
@@ -1118,7 +1118,7 @@ const ui = {
   isPanel: (title) => $("panel").open && $("panel-title").textContent === title,
 };
 const radar = setupRadar(() => { updateReadout(); draw(); });
-const music = setupMusic(ui, api, async () => { if (audio) await toggleAudio(); });
+const music = setupMusic(ui, api, async () => { if (audio) await toggleAudio(); }, draw);
 const jobPanel = setupJobs(ui, {
   api, connected: () => native, workspace: () => workspace,
   jobs: () => state.jobs, error: () => lastNativeError,
@@ -1154,11 +1154,11 @@ const composer = setupComposer(ui, {
     sketch: state.sketch, weather: state.scene === "rain" ? { ...radarPreference } : undefined,
     traffic: state.scene === "traffic-counts" ? state.traffic : undefined,
   }),
-  layerState(layer) {
+  layerState(layer, hideLabels = false) {
     const signal = layer.source === "download_rate" ? signals.download_rate || layer.signal : layer.signal;
     return { ...state, scene: layer.kind, patch: layer.patch, signal: signal?.values || [],
       sketch: layer.sketch || (layer.kind === "feedback" ? state.sketch : []), music: layer.music,
-      sceneLayer: true,
+      sceneLayer: true, hideLabels,
       traffic: layer.kind === "traffic-counts" ? layer.traffic || bundledTraffic : undefined,
       ...(layer.kind === "rain" ? radarState(radarSettings(layer.weather), null) : {}) };
   },
@@ -1227,12 +1227,10 @@ $("explore-button").onclick = explorer.open;
 $("compose-button").onclick = composer.start;
 $("ambient-button").onclick = ambient.configure;
 $("export-button").onclick = exportStill;
-function focusMode() {
-  const f = document.body.classList.toggle("focus");
-  $("unfocus").hidden = !f;
-  $("focus").setAttribute("aria-pressed", String(f));
-}
-$("focus").onclick = $("unfocus").onclick = focusMode;
+const focus = setupFocus(ui, $("frame"), $("focus"), $("unfocus"), (active) => {
+  composer.setPresenting(active);
+  resize();
+});
 stage.onclick = (e) => {
   const rect = stage.getBoundingClientRect();
   const shown =
@@ -1279,12 +1277,7 @@ document.addEventListener("keydown", (e) => {
     !$("drawer").hidden
   )
     return;
-  if (
-    e.key === "Escape" &&
-    document.body.classList.contains("focus") && !ambient.display &&
-    !$("panel").open
-  )
-    focusMode();
+  if (e.key === "Escape" && !$("panel").open && !e.isComposing) focus.escape(e);
   if (
     e.key === "o" &&
     state.scene === "rain" &&

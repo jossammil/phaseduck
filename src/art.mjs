@@ -1,5 +1,5 @@
 /* All geometry is procedural. The caller owns the animation clock and DPR. */
-import { paintMusic } from "./music.js";
+import { musicBackground, paintMusic } from "./music.js";
 const TAU = Math.PI * 2;
 const clip = (v, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
 const lerp = (a, b, t) => a * (1 - t) + b * t;
@@ -384,11 +384,13 @@ function trafficCounts(c, w, h, s) {
       });
       c.stroke();
     }
+    if (s.hideLabels) return;
     c.globalAlpha = 0.86;
     c.fillStyle = color;
     c.font = `500 ${Math.max(11, Math.min(w * 0.022, 22))}px system-ui`;
     c.fillText(group ? "Weekend" : "Weekday", left, base + h * 0.038);
   });
+  if (s.hideLabels) return;
   c.globalAlpha = 0.66;
   c.fillStyle = "#c4d0dd";
   c.font = `500 ${Math.max(10, Math.min(w * 0.016, 16))}px system-ui`;
@@ -429,7 +431,7 @@ function terrainProfiles(c, w, h, s) {
     profile();
     c.stroke();
   });
-  if (s.sceneLayer) {
+  if (s.sceneLayer && !s.hideLabels) {
     c.globalAlpha = 0.78;
     c.fillStyle = "#d7e3ef";
     c.font = `500 ${Math.max(10, Math.min(w * 0.019, 22))}px system-ui`;
@@ -587,6 +589,7 @@ function rainContours(c, w, h, s) {
       c.stroke();
     });
   });
+  if (s.hideLabels) return;
   c.globalAlpha = 0.8;
   c.font = `500 ${Math.max(11, Math.min(w * 0.017, 20))}px system-ui`;
   colors.forEach((color, index) => {
@@ -597,7 +600,7 @@ function rainContours(c, w, h, s) {
 function weather(c, w, h, s) {
   if (s.radarStyle === "contours") rainContours(c, w, h, s);
   else rain(c, w, h, s);
-  if (!s.sceneLayer) return;
+  if (!s.sceneLayer || s.hideLabels) return;
   const frame = s.radar;
   const text = frame
     ? [frame.region, frame.at.slice(11, 16) + " UTC", s.radarStale ? "Stale" : s.radarSource].join(" · ")
@@ -1009,8 +1012,10 @@ export function paint(ctx, w, h, s = {}, background = true) {
   ctx.save();
   try {
     ctx.globalCompositeOperation = "source-over";
-    if (background && s.scene === "rain" && s.radarStyle === "contours") {
-      ctx.fillStyle = "#000";
+    const solid = s.scene === "music" ? musicBackground(s.music)
+      : s.scene === "rain" && s.radarStyle === "contours" ? "#000" : null;
+    if (background && solid) {
+      ctx.fillStyle = solid;
       ctx.fillRect(0, 0, w, h);
     } else if (background) backdrop(ctx, w, h, s);
     else ctx.clearRect(0, 0, w, h);

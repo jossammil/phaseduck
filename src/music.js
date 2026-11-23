@@ -6,6 +6,7 @@ export const musicStyles = [
 ];
 
 export const musicPalettes = [
+  ["theme", "Theme colors"],
   ["cool", "Mint and lilac"],
   ["warm", "Amber and rose"],
   ["mono", "Silver"],
@@ -17,11 +18,54 @@ const palettes = {
   mono: ["#eaf4fa", "#a1b4cf", "#f7fbff"],
 };
 
+export const musicThemes = [
+  ["classic", "Classic"],
+  ["graphite", "Graphite"],
+  ["phosphor", "Phosphor"],
+];
+
+const themes = {
+  classic: { colors: palettes.cool, width: 1.4, waveLines: 8, ribbonLines: 20, rays: 64 },
+  graphite: {
+    colors: ["#a7aeb5", "#d7dbe0", "#fafafa"], background: "#17181b",
+    width: 0.9, waveLines: 4, ribbonLines: 10, rays: 32, crispHistory: true,
+  },
+  phosphor: {
+    colors: ["#45ce91", "#b7ec76", "#ffd486"], background: "#06130f",
+    width: 2.1, waveLines: 6, ribbonLines: 14, rays: 64, radialDash: [4, 3],
+  },
+};
+
+const defaultAppearance = { theme: "classic", palette: "theme", style: "waveform", sensitivity: 1 };
+function musicAppearance(value) {
+  const { theme, palette, style, sensitivity } = value || {};
+  return {
+    theme: Object.hasOwn(themes, theme) ? theme : defaultAppearance.theme,
+    palette: Object.hasOwn(palettes, palette) ? palette : defaultAppearance.palette,
+    style: musicStyles.some(([key]) => key === style) ? style : defaultAppearance.style,
+    sensitivity: Number.isFinite(sensitivity) && sensitivity >= 0.25 && sensitivity <= 3
+      ? sensitivity : defaultAppearance.sensitivity,
+  };
+}
+
 const sourceNames = { local: "Local audio file", safari: "Safari audio", desktop: "Desktop audio" };
 
-export function setupMusic(ui, api, stopTone) {
+export function musicLayerSettings(value) {
+  return {
+    ...musicAppearance(value),
+    source: Object.hasOwn(sourceNames, value?.source) ? value.source : "local",
+  };
+}
+
+function themeFor(music) {
+  return Object.hasOwn(themes, music?.theme) ? themes[music.theme] : themes.classic;
+}
+
+export const musicBackground = (music) => themeFor(music).background;
+
+export function setupMusic(ui, api, stopTone, redraw) {
   const { elt, button, choose, picker, modal } = ui;
-  const settings = { style: "waveform", palette: "cool", sensitivity: 1, source: "local" };
+  const settings = { ...musicAppearance(ui.getStored("music-appearance", null)), source: "local" };
   const player = new Audio();
   const history = {};
   let context, analyser, frequency, waveform, url, filename;
@@ -94,6 +138,17 @@ export function setupMusic(ui, api, stopTone) {
     return frame.status === "silent" ? sourceNames[source] + " · silent" : sourceNames[source] + " · listening";
   }
 
+  function saveAppearance() {
+    const { theme, palette, style, sensitivity } = settings;
+    ui.store("music-appearance", { theme, palette, style, sensitivity });
+  }
+
+  function changeAppearance(key, value) {
+    settings[key] = value;
+    redraw();
+    saveAppearance();
+  }
+
   function controls(open = true) {
     if (!open && !ui.isPanel("Music input")) return;
     const source = picker(sources(), settings.source, (value) => {
@@ -109,7 +164,11 @@ export function setupMusic(ui, api, stopTone) {
     level.max = "3";
     level.step = "0.05";
     level.value = settings.sensitivity;
-    level.oninput = () => { settings.sensitivity = Number(level.value); };
+    level.oninput = () => {
+      settings.sensitivity = Number(level.value);
+      redraw();
+    };
+    level.onchange = saveAppearance;
     level.setAttribute("aria-label", "Audio sensitivity");
     const actions = elt("div", undefined, "panel-actions");
     const act = (label, action) => button(label, async () => {
@@ -133,8 +192,9 @@ export function setupMusic(ui, api, stopTone) {
     }
     modal("Music input", [
       source, actions, status,
-      picker(musicStyles, settings.style, (value) => { settings.style = value; }, "Music aesthetic"),
-      picker(musicPalettes, settings.palette, (value) => { settings.palette = value; }, "Music palette"),
+      ui.label("Theme pack", picker(musicThemes, settings.theme, (value) => changeAppearance("theme", value), "Music theme pack")),
+      picker(musicStyles, settings.style, (value) => changeAppearance("style", value), "Music aesthetic"),
+      picker(musicPalettes, settings.palette, (value) => changeAppearance("palette", value), "Music palette"),
       ui.label("Sensitivity", level),
       ...(!connections() ? [elt("p", "Live Safari and desktop audio require a verified Mac companion build.", "hint")] : []),
     ]);
@@ -171,7 +231,7 @@ export function setupMusic(ui, api, stopTone) {
 }
 
 const historySurfaces = new WeakMap();
-function paintHistory(ctx, width, height, series, colors, sensitivity) {
+function paintHistory(ctx, width, height, series, colors, sensitivity, theme, hideLabels) {
   const x = width * 0.12, y = height * 0.19, w = width * 0.78, h = height * 0.63;
   if (series.length) {
     let surface = historySurfaces.get(ctx.canvas);
@@ -202,13 +262,14 @@ function paintHistory(ctx, width, height, series, colors, sensitivity) {
       }
       surface.target.putImageData(surface.pixels, 0, 0);
     }
-    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingEnabled = !theme.crispHistory;
     ctx.drawImage(surface.canvas, x, y, w, h);
   }
   ctx.strokeStyle = "#91a7bf";
   ctx.lineWidth = 1;
   ctx.globalAlpha = 0.30;
   ctx.strokeRect(x, y, w, h);
+  if (hideLabels) return;
   ctx.globalAlpha = 0.78;
   ctx.fillStyle = "#d7e5f2";
   ctx.font = `500 ${Math.max(10, Math.min(width * 0.02, 18))}px system-ui`;
@@ -219,12 +280,13 @@ function paintHistory(ctx, width, height, series, colors, sensitivity) {
   ctx.fillText("Latest sample", x + w, y + h + 19);
 }
 
-export function paintMusic(ctx, width, height, { music, audioFrames, audioHistory, time }) {
+export function paintMusic(ctx, width, height, { music, audioFrames, audioHistory, time, hideLabels }) {
   const frame = audioFrames?.[music?.source];
-  const colors = palettes[music?.palette] || palettes.cool;
+  const theme = themeFor(music);
+  const colors = Object.hasOwn(palettes, music?.palette) ? palettes[music.palette] : theme.colors;
   const gain = music?.sensitivity || 1;
   if (music?.style === "history") {
-    paintHistory(ctx, width, height, audioHistory?.[music.source] || [], colors, gain);
+    paintHistory(ctx, width, height, audioHistory?.[music.source] || [], colors, gain, theme, hideLabels);
     return;
   }
   const tau = 2 * Math.PI;
@@ -236,7 +298,7 @@ export function paintMusic(ctx, width, height, { music, audioFrames, audioHistor
   colors.forEach((color, index) => gradient.addColorStop(index / 2, color));
   ctx.strokeStyle = gradient;
   ctx.fillStyle = gradient;
-  ctx.lineWidth = 1.4;
+  ctx.lineWidth = theme.width;
   if (music?.style === "spectrum") {
     const base = size * (0.17 + 0.035 * level);
     ctx.globalAlpha = 0.4;
@@ -244,18 +306,21 @@ export function paintMusic(ctx, width, height, { music, audioFrames, audioHistor
     ctx.arc(centerX, centerY, base, 0, tau);
     ctx.stroke();
     ctx.globalAlpha = 0.9;
-    for (let i = 0; i < 64; i++) {
-      const angle = i * tau / 64 - Math.PI / 2;
-      const peak = sample(frame?.bands?.[i < 32 ? i : 63 - i]);
+    if (theme.radialDash) ctx.setLineDash(theme.radialDash);
+    ctx.beginPath();
+    for (let i = 0; i < theme.rays; i++) {
+      const angle = i * tau / theme.rays - Math.PI / 2;
+      const band = Math.min(31, Math.floor(64 * Math.min(i, theme.rays - 1 - i) / theme.rays));
+      const peak = sample(frame?.bands?.[band]);
       const ray = base + size * (0.015 + 0.25 * peak);
-      ctx.beginPath();
       ctx.moveTo(centerX + Math.cos(angle) * base, centerY + Math.sin(angle) * base);
       ctx.lineTo(centerX + Math.cos(angle) * ray, centerY + Math.sin(angle) * ray);
-      ctx.stroke();
     }
+    ctx.stroke();
+    if (theme.radialDash) ctx.setLineDash([]);
   } else {
     const ribbons = music?.style === "ribbons";
-    const lines = ribbons ? 20 : 8;
+    const lines = ribbons ? theme.ribbonLines : theme.waveLines;
     for (let j = 0; j < lines; j++) {
       const offset = (j - (lines - 1) / 2) / lines;
       ctx.globalAlpha = 0.3 + (1 - Math.abs(offset) * 2) * 0.5;

@@ -29,13 +29,18 @@ Files are read on your device. Saved data layers contain the values or histogram
 
 For music, open **Music Visualizer → Music input → Open audio file**. Choose Waveform, Radial spectrum, Spectral ribbons, or Spectral history and adjust the palette and sensitivity. Spectral history shows up to 12 seconds of frequency summaries in memory. The music visualizer is also available as a layer. Safari and desktop playback capture are available for testing in the Mac companion’s opt-in audio preview.
 
+Choose **Classic**, **Graphite**, or **Phosphor** under **Theme pack** in Music input or in a music layer’s settings. Keep **Theme colors** to use the pack’s colors, or pick a palette independently. Each saved music layer remembers its own pack.
+
 Select **Export 4K still** to save the current instrument or composition as a landscape or portrait PNG. Use **Include source captions** to put the scene name and available data sources on the image.
+
+## Focus on the visual
+
+Select **Focus view**, choose which text to show, then select **Enter Focus**. **Artwork only** clears the title, live readout, and labels inside visuals, including chart captions and job cards in a composition. Press **Escape** to return to the studio. On a touchscreen, tap the top edge to reveal **Exit Focus**.
 
 ## Explore weather, traffic, and terrain
 
 - **Rain Glass** offers Jackson and Mississippi Gulf Coast views. Choose **Latest observation** for current IEM reflectivity or **Storm archive** for bundled frames. **Contours** traces the 20, 35, and 50 dBZ bands on a black background. Use **Previous**, **Next**, or **Replay storm** to move through available frames, and **Source frame** to check the underlying image and UTC time. A stale label marks a retained frame when updates fail or the latest frame ages out.
 - **Traffic Patterns** draws hourly median counts for weekdays and weekends. The bundled example uses one Louisiana FHWA counting station. To explore another station, use **Open hourly counts CSV** with columns `station_id,date,hour,vehicles`. Supply one station, a local date as `YYYY-MM-DD`, an integer hour from 0 through 23, and one vehicle count per hour. Click the plot to inspect the medians for that hour.
-- **Live Google traffic** opens a separate hosted map of Jackson, Mississippi. Use your own billing-enabled Maps JavaScript API key restricted to the hosted origin `https://jossammil.github.io` and to Maps JavaScript API. The view sends the key to Google when you select **Load traffic map**. Phase Deck uses the key for that page session.
 - **Terrain Profiles** draws a stack of west-to-east elevation lines across the Mississippi River and Natchez bluffs. **Source details** links to the USGS 3DEP sample.
 
 Rain Glass, Traffic Patterns, and Terrain Profiles can be saved as composition layers. In the Rain Glass layer inspector, choose its region, source, and style independently of other layers. [Data sources and processing](public/data/SOURCE.md)
@@ -60,6 +65,8 @@ npm start
 
 Open http://localhost:4180. To produce the standalone browser download, run `npm run package:browser`. The resulting `releases/phaseduck-browser.zip` contains the built site, bundled runtimes, sample data and local startup instructions. The Pages workflow builds the same frontend on pushes to main.
 
-After building, run `npm run test:places` to exercise radar replay, saved layers, traffic counts, music, and PNG export in Chrome and Playwright WebKit. Set `CHROME_BIN` and `WEBKIT_BIN` to pick installed executables, or set `PHASE_WEBKIT=0` to run Chrome only. The Google traffic test simulates the provider SDK and requires no key.
+After building, run `npm run test:places` to exercise radar replay, saved layers, traffic counts, Focus, music themes, and PNG export in Chrome and Playwright WebKit. Set `CHROME_BIN` and `WEBKIT_BIN` to pick installed executables, or set `PHASE_WEBKIT=0` to run Chrome only.
+
+Music theme packs use the existing Canvas 2D clock. Motion Mini could handle a short interface transition, Anime.js can drive choreography from the deck’s clock, and Three.js could power a separately loaded 3D instrument with its own fallback and export checks. [Motion](https://motion.dev/docs/animate) · [Anime.js](https://animejs.com/documentation/engine) · [Three.js](https://threejs.org/docs/pages/WebGLRenderer.html)
 
 See the [fixture provenance](public/data/SOURCE.md), [language runtime manifest](public/runtime/manifest.json) and [third-party notices](public/notices/). Upstream projects publish the matching [webR source](https://github.com/r-wasm/webr/tree/v0.6.1) and [Pyodide source](https://github.com/pyodide/pyodide/tree/0.27.7).

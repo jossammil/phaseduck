@@ -25,7 +25,7 @@
               <a href="https://github.com/jossammil/phaseduck/releases/latest/download/phaseduck-mac-arm64.zip">Mac companion <small>Apple silicon · native jobs and Neovim</small></a>
             </div>
           </details>
-          <button id="focus" aria-pressed="false">Focus view</button
+          <button id="focus" aria-haspopup="dialog">Focus view</button
           ><button
             id="terminal-button"
             aria-expanded="false"
@@ -45,7 +45,7 @@
           </div>
         </aside>
         <section class="work">
-          <div class="frame">
+          <div class="frame" id="frame" tabindex="-1">
             <div class="scene-head">
               <span id="category"></span>
               <h1 id="title">Phase Clock</h1>
@@ -55,7 +55,7 @@
             <div class="readout">
               <span id="readout"></span><small id="detail"></small>
             </div>
-            <button id="unfocus" hidden>Exit focus</button>
+            <button id="unfocus" type="button" hidden>Exit Focus</button>
             <div id="ambient-jobs" hidden></div>
             <nav id="ambient-controls" aria-label="Ambient display controls"></nav>
           </div>
@@ -64,7 +64,6 @@
             <button id="compose-button" aria-pressed="false">Compose</button>
             <button id="ambient-button">Ambient display</button>
             <button id="export-button">Export 4K still</button>
-            <a class="studio-link" id="google-traffic" href="./traffic.html" target="_blank" rel="noopener noreferrer">Live Google traffic</a>
           </div>
           <section id="composition-editor" aria-label="Composition editor" hidden></section>
           <div id="instrument-controls" class="instrument-controls"></div>
@@ -120,7 +119,7 @@
         </section>
       </div>
     </section>
-    <dialog id="panel">
+    <dialog id="panel" aria-labelledby="panel-title">
       <div class="panel-head">
         <h2 id="panel-title"></h2>
         <button id="panel-close" aria-label="Close panel">Close</button>
