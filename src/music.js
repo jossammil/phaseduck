@@ -2,6 +2,7 @@ export const musicStyles = [
   ["waveform", "Waveform"],
   ["spectrum", "Radial spectrum"],
   ["ribbons", "Spectral ribbons"],
+  ["history", "Spectral history"],
 ];
 
 export const musicPalettes = [
@@ -22,6 +23,7 @@ export function setupMusic(ui, api, stopTone) {
   const { elt, button, choose, picker, modal } = ui;
   const settings = { style: "waveform", palette: "cool", sensitivity: 1, source: "local" };
   const player = new Audio();
+  const history = {};
   let context, analyser, frequency, waveform, url, filename;
   let stream, frame, visible = false, allowed = [];
   let message = "";
@@ -43,6 +45,7 @@ export function setupMusic(ui, api, stopTone) {
     if (url) URL.revokeObjectURL(url);
     url = URL.createObjectURL(file);
     filename = file.name;
+    delete history.local;
     player.src = url;
     await Promise.all([context.resume(), player.play()]);
   }
@@ -140,29 +143,90 @@ export function setupMusic(ui, api, stopTone) {
   function read() {
     const frames = {};
     if (frame?.source && frame.status === "live") frames[frame.source] = frame;
-    if (!analyser || player.paused) return frames;
-    analyser.getByteFrequencyData(frequency);
-    analyser.getFloatTimeDomainData(waveform);
-    const bands = Array.from({ length: 32 }, (_, index) => {
-      const target = 55 * (12000 / 55) ** (index / 31);
-      return frequency[Math.min(frequency.length - 1, Math.round(target * analyser.fftSize / context.sampleRate))] / 255;
-    });
-    const wave = Array.from({ length: 64 }, (_, index) => waveform[index * 32]);
-    frames.local = { bands, wave, level: Math.sqrt(waveform.reduce((sum, x) => sum + x * x, 0) / waveform.length) };
+    if (analyser && !player.paused) {
+      analyser.getByteFrequencyData(frequency);
+      analyser.getFloatTimeDomainData(waveform);
+      const bands = Array.from({ length: 32 }, (_, index) => {
+        const target = 55 * (12000 / 55) ** (index / 31);
+        return frequency[Math.min(frequency.length - 1, Math.round(target * analyser.fftSize / context.sampleRate))] / 255;
+      });
+      const wave = Array.from({ length: 64 }, (_, index) => waveform[index * 32]);
+      frames.local = { bands, wave, level: Math.sqrt(waveform.reduce((sum, x) => sum + x * x, 0) / waveform.length) };
+    }
+    const now = performance.now();
+    for (const [source, summary] of Object.entries(frames)) {
+      const series = history[source] ??= [];
+      if (now - (series.at(-1)?.at ?? -Infinity) < 63) continue;
+      series.push({ at: now, bands: summary.bands });
+      while (series.length && now - series[0].at > 12000) series.shift();
+    }
     return frames;
   }
 
   return {
-    settings, sources, controls, statusFor, read,
+    settings, sources, controls, statusFor, read, history,
     setCapabilities(values) { allowed = values || []; watch(); },
     setVisible(value) { if (visible !== value) { visible = value; watch(); } },
   };
 }
 
-export function paintMusic(ctx, width, height, { music, audioFrames, time }) {
+const historySurfaces = new WeakMap();
+function paintHistory(ctx, width, height, series, colors, sensitivity) {
+  const x = width * 0.12, y = height * 0.19, w = width * 0.78, h = height * 0.63;
+  if (series.length) {
+    let surface = historySurfaces.get(ctx.canvas);
+    if (!surface) {
+      const canvas = ctx.canvas.ownerDocument?.createElement("canvas") || new OffscreenCanvas(192, 32);
+      canvas.width = 192;
+      canvas.height = 32;
+      const target = canvas.getContext("2d");
+      surface = { canvas, target, pixels: target.createImageData(192, 32) };
+      historySurfaces.set(ctx.canvas, surface);
+    }
+    const end = series.at(-1).at;
+    if (surface.end !== end || surface.colors !== colors || surface.sensitivity !== sensitivity) {
+      Object.assign(surface, { end, colors, sensitivity });
+      const rgb = colors.map((color) => [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16)));
+      const { data } = surface.pixels;
+      data.fill(0);
+      for (const { at, bands } of series) {
+        const col = Math.max(0, 191 - Math.round((end - at) / 62.5));
+        bands.forEach((band, index) => {
+          const strength = Math.min(1, band * sensitivity);
+          const tint = strength * 2, low = Math.min(1, Math.floor(tint)), fraction = tint - low;
+          const offset = (192 * (31 - index) + col) * 4;
+          for (let channel = 0; channel < 3; channel++)
+            data[offset + channel] = rgb[low][channel] * (1 - fraction) + rgb[low + 1][channel] * fraction;
+          data[offset + 3] = Math.round(255 * strength ** 0.75);
+        });
+      }
+      surface.target.putImageData(surface.pixels, 0, 0);
+    }
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(surface.canvas, x, y, w, h);
+  }
+  ctx.strokeStyle = "#91a7bf";
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = 0.30;
+  ctx.strokeRect(x, y, w, h);
+  ctx.globalAlpha = 0.78;
+  ctx.fillStyle = "#d7e5f2";
+  ctx.font = `500 ${Math.max(10, Math.min(width * 0.02, 18))}px system-ui`;
+  ctx.fillText("12 kHz", x, y + 15);
+  ctx.fillText("55 Hz", x, y + h - 6);
+  ctx.fillText("12 seconds ago", x, y + h + 19);
+  ctx.textAlign = "right";
+  ctx.fillText("Latest sample", x + w, y + h + 19);
+}
+
+export function paintMusic(ctx, width, height, { music, audioFrames, audioHistory, time }) {
   const frame = audioFrames?.[music?.source];
   const colors = palettes[music?.palette] || palettes.cool;
   const gain = music?.sensitivity || 1;
+  if (music?.style === "history") {
+    paintHistory(ctx, width, height, audioHistory?.[music.source] || [], colors, gain);
+    return;
+  }
   const tau = 2 * Math.PI;
   const sample = (value) => Math.max(-1, Math.min(1, (value || 0) * gain));
   const level = sample(frame?.level * 4);

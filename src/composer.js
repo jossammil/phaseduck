@@ -1,8 +1,9 @@
 import { paint, inspect } from "./art.mjs";
 import { histogram } from "./explorer.js";
-import { jobCard, workActivity } from "./jobs.js";
+import { jobCard, jobMetrics, jobStatus, workActivity } from "./jobs.js";
 import { musicPalettes, musicStyles } from "./music.js";
 import { targets } from "./signals.js";
+import { radarModes, radarRegions, radarSettings, radarStyles } from "./radar.js";
 
 const maxLayers = 6;
 const blendModes = [["normal", "Normal"], ["screen", "Screen"], ["multiply", "Multiply"]];
@@ -31,6 +32,7 @@ export function setupComposer(ui, options) {
   const active = () => !!working;
   const isEditing = () => editing && active();
   const has = (kind) => !!working?.layers.some((layer) => layer.kind === kind && layer.visible);
+  const visibleLayers = (kind) => (working?.layers || []).filter((layer) => layer.visible && layer.kind === kind);
   function make(kind, full = false, overrides = {}) {
     return {
       id: id(), kind, x: full ? 0 : 0.23, y: full ? 0 : 0.23,
@@ -149,11 +151,7 @@ export function setupComposer(ui, options) {
       if (!layer.visible) continue;
       const view = views.get(layer.id);
       if (view.job) {
-        const jobs = options.jobs();
-        const selectedJob = layer.jobId
-          ? jobs.find((job) => job.id === layer.jobId)
-          : jobs.find((job) => job.kind === "download" && workActivity(job)) || jobs.find(workActivity);
-        view.job.show(selectedJob, { stale: !!options.connectionError() });
+        view.job.show(layerJob(layer), { stale: !!options.connectionError() });
       }
       if (!view.context) continue;
       const w = Math.max(width * layer.w, 1), h = Math.max(height * layer.h, 1);
@@ -167,6 +165,67 @@ export function setupComposer(ui, options) {
       view.context.setTransform(pixelsX / w, 0, 0, pixelsY / h, 0, 0);
       paint(view.context, w, h, options.layerState(layer), layer.background);
     }
+  }
+
+  function layerJob(layer) {
+    const jobs = options.jobs();
+    return layer.jobId
+      ? jobs.find((job) => job.id === layer.jobId)
+      : jobs.find((job) => job.kind === "download" && workActivity(job)) || jobs.find(workActivity);
+  }
+
+  function paintWidget(ctx, w, h, layer) {
+    const pad = Math.min(w, h) * 0.09;
+    const font = Math.max(11, Math.min(48, h * 0.13, w * 0.085));
+    ctx.fillStyle = "#10212b";
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = "#b9eee1";
+    ctx.font = `500 ${font}px system-ui`;
+    if (layer.kind === "histogram") {
+      const { field, bins, min, max } = layer.histogram;
+      const top = Math.max(1, ...bins), span = (w - 2 * pad) / bins.length;
+      ctx.fillText(field, pad, pad + font, w - 2 * pad);
+      const base = h - pad - font;
+      bins.forEach((count, index) => {
+        const height = Math.max(0, base - pad - font * 1.5) * count / top;
+        ctx.fillRect(pad + index * span, base - height, span * 0.85, height);
+      });
+      ctx.fillText(String(min), pad, h - pad, w / 3);
+      ctx.textAlign = "right";
+      if (min !== max) ctx.fillText(String(max), w - pad, h - pad, w / 3);
+    } else {
+      const job = layerJob(layer);
+      const lines = [options.connectionError() ? "Work monitor disconnected" : job ? jobStatus(job.status) : "No active jobs",
+        job?.label, job?.stage, job && jobMetrics(job).join(" · ")];
+      lines.filter(Boolean).forEach((text, index) =>
+        ctx.fillText(text, pad, pad + font * (1 + index * 1.3), w - pad * 2));
+    }
+  }
+
+  function paintStill(output, width, height) {
+    const captions = [];
+    const scratch = elt("canvas");
+    for (const layer of working?.layers || []) {
+      if (!layer.visible || layer.opacity === 0) continue;
+      const w = Math.max(1, Math.round(width * layer.w)), h = Math.max(1, Math.round(height * layer.h));
+      scratch.width = w;
+      scratch.height = h;
+      const ctx = scratch.getContext("2d");
+      if (layer.kind === "histogram" || layer.kind === "job-card") paintWidget(ctx, w, h, layer);
+      else {
+        const state = options.layerState(layer);
+        const current = views.get(layer.id)?.context?.canvas;
+        if (layer.kind === "feedback" && current) ctx.drawImage(current, 0, 0, w, h);
+        else paint(ctx, w, h, state, layer.background);
+        captions.push(options.caption(state));
+      }
+      output.globalAlpha = layer.opacity;
+      output.globalCompositeOperation = layer.blend === "normal" ? "source-over" : layer.blend;
+      output.drawImage(scratch, Math.round(width * layer.x), Math.round(height * layer.y));
+    }
+    output.globalAlpha = 1;
+    output.globalCompositeOperation = "source-over";
+    return captions.filter(Boolean);
   }
 
   function start() {
@@ -256,6 +315,15 @@ export function setupComposer(ui, options) {
         field("Sensitivity %", layer.music.sensitivity * 100, 25, 300, (sensitivity) => change(layer, { music: { ...layer.music, sensitivity: sensitivity / 100 } })),
       );
     } else if (layer.kind !== "histogram") {
+      if (layer.kind === "rain") {
+        const weather = radarSettings(layer.weather);
+        for (const [control, choices, key] of [
+          ["Radar region", radarRegions, "region"],
+          ["Radar source", radarModes, "mode"],
+          ["Radar style", radarStyles, "style"],
+        ]) items.append(label(control, picker(choices, weather[key], (value) =>
+          change(layer, { weather: { ...radarSettings(layer.weather), [key]: value } }), "Layer " + control.toLowerCase())));
+      }
       const patch = Object.keys(targets).find((name) => targets[name] === layer.kind);
       if (patch) {
         const signals = options.signals();
@@ -358,6 +426,6 @@ export function setupComposer(ui, options) {
       })) : [elt("p", "Save a composition to see it here.", "hint")]);
   }
 
-  return { active, isEditing, has, start, leave, show, add, saved, paint: paintLayers,
+  return { active, isEditing, has, visibleLayers, start, leave, show, add, saved, paint: paintLayers, paintStill,
     title: () => working?.name, refreshControls: panel };
 }

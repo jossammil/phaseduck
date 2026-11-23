@@ -15,6 +15,7 @@ const number = (v, fallback = 0) =>
   Number.isFinite(Number(v)) ? Number(v) : fallback;
 const feedbackBuffers = new WeakMap();
 const rasterCache = new WeakMap();
+const radarContoursCache = new WeakMap();
 const clocks = new Map();
 const loomScales = new WeakMap();
 const signalScales = new WeakMap();
@@ -358,6 +359,84 @@ function dunes(c, w, h, s) {
   }
 }
 
+const landscape = { start: 0.085, end: 0.92 };
+function trafficCounts(c, w, h, s) {
+  const profile = s.traffic;
+  if (!profile) return;
+  const left = w * landscape.start, right = w * landscape.end;
+  const peak = Math.max(1, ...profile.weekday, ...profile.weekend);
+  const steps = [[profile.weekday, "#a3ecd9", 0.55], [profile.weekend, "#deafef", 0.85]];
+  steps.forEach(([values, color, baseline], group) => {
+    const base = h * baseline;
+    ink(c, color, 0.18);
+    line(c, left, base, right, base);
+    for (let echo = 7; echo >= 0; echo--) {
+      ink(c, color, echo ? 0.08 + 0.024 * (7 - echo) : 0.92, echo ? 0.9 : 1.7);
+      c.beginPath();
+      let open = false;
+      values.forEach((value, hour) => {
+        if (value === null) { open = false; return; }
+        const x = lerp(left, right, hour / 23);
+        const y = base - (value / peak) * h * (0.229 - 0.012 * echo);
+        if (open) c.lineTo(x, y);
+        else c.moveTo(x, y);
+        open = true;
+      });
+      c.stroke();
+    }
+    c.globalAlpha = 0.86;
+    c.fillStyle = color;
+    c.font = `500 ${Math.max(11, Math.min(w * 0.022, 22))}px system-ui`;
+    c.fillText(group ? "Weekend" : "Weekday", left, base + h * 0.038);
+  });
+  c.globalAlpha = 0.66;
+  c.fillStyle = "#c4d0dd";
+  c.font = `500 ${Math.max(10, Math.min(w * 0.016, 16))}px system-ui`;
+  for (const hour of [0, 6, 12, 18, 23]) {
+    c.textAlign = hour === 23 ? "right" : hour ? "center" : "left";
+    c.fillText(String(hour).padStart(2, "0") + ":00", lerp(left, right, hour / 23), h * 0.96);
+  }
+  if (s.sceneLayer) {
+    c.textAlign = "left";
+    c.fillText(profile.station + " · " + profile.first + " to " + profile.last + " · Vehicles/h", left, h * 0.12, right - left);
+  }
+}
+function terrainProfiles(c, w, h, s) {
+  const rows = s.terrain?.rows;
+  if (!rows?.length) return;
+  const left = w * landscape.start, right = w * landscape.end;
+  let min = Infinity, max = -Infinity;
+  for (const row of rows) for (const value of row) {
+    min = Math.min(min, value);
+    max = Math.max(max, value);
+  }
+  const grad = spectrum(c, left, h * 0.4, right, h * 0.65, ["#7297c4", "#90d3ca", "#ffcfad"]);
+  rows.forEach((row, index) => {
+    const base = h * lerp(0.43, 0.89, index / Math.max(1, rows.length - 1));
+    const elevation = (value) => base - h * 0.235 * (value - min) / Math.max(1, max - min);
+    const profile = () => row.forEach((value, col) =>
+      place(c, col, lerp(left, right, col / (row.length - 1)), elevation(value)));
+    c.beginPath();
+    profile();
+    c.lineTo(right, base + h * 0.035);
+    c.lineTo(left, base + h * 0.035);
+    c.closePath();
+    c.globalAlpha = 0.91;
+    c.fillStyle = "#070d17";
+    c.fill();
+    ink(c, grad, 0.42 + index / rows.length * 0.45, 1);
+    c.beginPath();
+    profile();
+    c.stroke();
+  });
+  if (s.sceneLayer) {
+    c.globalAlpha = 0.78;
+    c.fillStyle = "#d7e3ef";
+    c.font = `500 ${Math.max(10, Math.min(w * 0.019, 22))}px system-ui`;
+    c.fillText(s.terrain.name + " · " + s.terrain.source, left, h * 0.12, right - left);
+  }
+}
+
 function loomMax(days) {
   if (!days || days.length === 0) return 1;
   if (loomScales.has(days)) return loomScales.get(days);
@@ -423,6 +502,7 @@ function loom(c, w, h, s) {
 }
 
 const RADAR_RECT = { x: 0.095, y: 0.11, w: 0.81, h: 0.77 };
+const CONTOUR_RECT = { x: 0.095, y: 0.20, w: 0.81, h: 0.59 };
 function radarSample(r, u, v) {
   const col = clip(Math.round(u * (r.cols - 1)), 0, r.cols - 1);
   const row = clip(Math.round(v * (r.rows - 1)), 0, r.rows - 1);
@@ -433,8 +513,9 @@ function radarSample(r, u, v) {
     value: value == null || !Number.isFinite(+value) ? null : clip(+value),
   };
 }
-function rasterMesh(r) {
-  if (rasterCache.has(r)) return rasterCache.get(r);
+function rasterMesh(r, fixedBands = false) {
+  const cache = fixedBands ? radarContoursCache : rasterCache;
+  if (cache.has(r)) return cache.get(r);
   const cols = Math.min(96, r.cols),
     rows = Math.min(80, r.rows);
   const cells = Array.from({ length: rows }, (_, j) =>
@@ -445,7 +526,7 @@ function rasterMesh(r) {
           .value,
     ),
   );
-  const thresholds = [
+  const thresholds = fixedBands ? [20, 35, 50].map((dbz) => (dbz + 30) / 105) : [
     0.055, 0.105, 0.17, 0.24, 0.33, 0.42, 0.53, 0.65, 0.77, 0.87, 0.95,
   ];
   const contours = thresholds.map(() => []);
@@ -479,8 +560,53 @@ function rasterMesh(r) {
       });
     }
   const data = { contours, cells, cols, rows };
-  rasterCache.set(r, data);
+  cache.set(r, data);
   return data;
+}
+function rainContours(c, w, h, s) {
+  const { x, y, w: width, h: height } = CONTOUR_RECT;
+  const left = x * w, top = y * h, ww = width * w, hh = height * h;
+  ink(c, "#6e8398", 0.27, 1);
+  for (let i = 0; i <= 4; i++) {
+    const u = i / 4;
+    line(c, left + ww * u, top, left + ww * u, top + hh);
+    line(c, left, top + hh * u, left + ww, top + hh * u);
+  }
+  if (!s.radar) return;
+  const colors = ["#6cc5bf", "#a6d7ff", "#ffb9a0"];
+  const frames = [...(s.radarTrail || []), s.radar];
+  frames.forEach((frame, index) => {
+    const age = frames.length - index - 1;
+    rasterMesh(frame, true).contours.forEach((segments, band) => {
+      ink(c, colors[band], age ? 0.23 / age : 0.89, age ? 0.9 : 1 + band * 0.35);
+      c.beginPath();
+      for (let i = 0; i + 3 < segments.length; i += 4) {
+        c.moveTo(left + ww * segments[i], top + hh * segments[i + 1]);
+        c.lineTo(left + ww * segments[i + 2], top + hh * segments[i + 3]);
+      }
+      c.stroke();
+    });
+  });
+  c.globalAlpha = 0.8;
+  c.font = `500 ${Math.max(11, Math.min(w * 0.017, 20))}px system-ui`;
+  colors.forEach((color, index) => {
+    c.fillStyle = color;
+    c.fillText([20, 35, 50][index] + (index === 2 ? " dBZ" : ""), left + index * ww / 7, top + hh + Math.min(22, h * 0.05));
+  });
+}
+function weather(c, w, h, s) {
+  if (s.radarStyle === "contours") rainContours(c, w, h, s);
+  else rain(c, w, h, s);
+  if (!s.sceneLayer) return;
+  const frame = s.radar;
+  const text = frame
+    ? [frame.region, frame.at.slice(11, 16) + " UTC", s.radarStale ? "Stale" : s.radarSource].join(" · ")
+    : s.radarError ? "Radar source unavailable" : "Loading radar";
+  c.globalAlpha = 0.88;
+  c.fillStyle = "#e2eff5";
+  c.font = `500 ${Math.max(11, Math.min(w * 0.020, 19))}px system-ui`;
+  c.textAlign = "right";
+  c.fillText(text, w * 0.905, h * 0.085, w * 0.81);
 }
 function rain(c, w, h, s) {
   const r = s.radar,
@@ -863,7 +989,7 @@ function feedback(c, w, h, s) {
 
 const painters = {
   clock: phaseClock,
-  rain,
+  rain: weather,
   loom,
   jobs,
   calendar,
@@ -874,6 +1000,8 @@ const painters = {
   orbit: harmonics,
   harmonics,
   music: paintMusic,
+  "traffic-counts": trafficCounts,
+  terrain: terrainProfiles,
 };
 export function paint(ctx, w, h, s = {}, background = true) {
   if (!ctx || !Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0)
@@ -881,7 +1009,10 @@ export function paint(ctx, w, h, s = {}, background = true) {
   ctx.save();
   try {
     ctx.globalCompositeOperation = "source-over";
-    if (background) backdrop(ctx, w, h, s);
+    if (background && s.scene === "rain" && s.radarStyle === "contours") {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, w, h);
+    } else if (background) backdrop(ctx, w, h, s);
     else ctx.clearRect(0, 0, w, h);
     (painters[s.scene] || silk)(ctx, w, h, s);
     if (s.scene !== "feedback") primitives(ctx, w, h, s.sketch);
@@ -926,11 +1057,17 @@ export function inspect(x, y, s = {}) {
     const hour = Math.round(x * (s.signal.length - 1));
     return { hour, value: s.signal[hour] };
   }
+  if (s.scene === "traffic-counts" && s.traffic && x >= landscape.start && x <= landscape.end) {
+    const hour = Math.round(23 * (x - landscape.start) / (landscape.end - landscape.start));
+    return { hour, weekday: s.traffic.weekday[hour], weekend: s.traffic.weekend[hour] };
+  }
   if (s.scene === "rain" && s.radar?.bins) {
-    const r = RADAR_RECT,
+    const r = s.radarStyle === "contours" ? CONTOUR_RECT : RADAR_RECT,
       u = (x - r.x) / r.w,
       v = (y - r.y) / r.h;
-    return u < 0 || u > 1 || v < 0 || v > 1 ? null : radarSample(s.radar, u, v);
+    if (u < 0 || u > 1 || v < 0 || v > 1) return null;
+    const cell = radarSample(s.radar, u, v);
+    return { ...cell, dbz: s.radar.levels?.[cell.row * s.radar.cols + cell.col] ?? null };
   }
   if (s.scene === "jobs" && s.jobs?.length) {
     const u = (x - 0.06) / 0.88;

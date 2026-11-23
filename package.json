@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "test:places": "node scripts/places-check.mjs",
     "start": "python3 -m http.server 4180 --bind 127.0.0.1 --directory dist",
     "package:browser": "npm run build && python3 scripts/package-browser.py"
   },

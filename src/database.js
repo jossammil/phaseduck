@@ -45,6 +45,21 @@ export async function sql(query, limit = 4097) {
   );
   return records(table);
 }
+export async function hourlyTrafficRows(file) {
+  const { db, conn } = await ready();
+  const name = "traffic-counts-" + ++sequence + ".csv";
+  await db.registerFileHandle(name, file, DuckDBDataProtocol.BROWSER_FILEREADER, true);
+  try {
+    const rows = records(await conn.query(
+      "SELECT station_id, date, hour, vehicles FROM read_csv('" + name +
+      "', header=true, all_varchar=true, delim=',') LIMIT 100001",
+    ));
+    if (rows.length > 100000) throw Error("Choose a file with up to 100,000 hourly observations.");
+    return rows;
+  } finally {
+    await db.dropFile(name);
+  }
+}
 function records(table) {
   return Array.from(table, (row) =>
     Object.fromEntries(

@@ -41,5 +41,48 @@
       "at": "2023-03-25T03:10:00Z",
       "url": "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q-t.cgi?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=nexrad-n0q-wmst&STYLES=&SRS=EPSG:4326&BBOX=-92.2,30.7,-88.2,33.9&WIDTH=256&HEIGHT=204&FORMAT=image/png&TRANSPARENT=TRUE&TIME=2023-03-25T03:10:00Z"
     }
-  ]
+  ],
+  "regions": {
+    "gulf": {
+      "region": "Mississippi Gulf Coast",
+      "bounds": [
+        -90.75,
+        29.25,
+        -87.25,
+        32.05
+      ],
+      "frames": [
+        {
+          "file": "gulf-1.png",
+          "at": "2024-04-10T13:00:00Z",
+          "url": "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q-t.cgi?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=nexrad-n0q-wmst&STYLES=&SRS=EPSG%3A4326&BBOX=-90.75%2C29.25%2C-87.25%2C32.05&WIDTH=256&HEIGHT=204&FORMAT=image%2Fpng&TRANSPARENT=TRUE&TIME=2024-04-10T13%3A00%3A00Z"
+        },
+        {
+          "file": "gulf-2.png",
+          "at": "2024-04-10T13:30:00Z",
+          "url": "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q-t.cgi?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=nexrad-n0q-wmst&STYLES=&SRS=EPSG%3A4326&BBOX=-90.75%2C29.25%2C-87.25%2C32.05&WIDTH=256&HEIGHT=204&FORMAT=image%2Fpng&TRANSPARENT=TRUE&TIME=2024-04-10T13%3A30%3A00Z"
+        },
+        {
+          "file": "gulf-3.png",
+          "at": "2024-04-10T14:00:00Z",
+          "url": "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q-t.cgi?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=nexrad-n0q-wmst&STYLES=&SRS=EPSG%3A4326&BBOX=-90.75%2C29.25%2C-87.25%2C32.05&WIDTH=256&HEIGHT=204&FORMAT=image%2Fpng&TRANSPARENT=TRUE&TIME=2024-04-10T14%3A00%3A00Z"
+        },
+        {
+          "file": "gulf-4.png",
+          "at": "2024-04-10T14:30:00Z",
+          "url": "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q-t.cgi?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=nexrad-n0q-wmst&STYLES=&SRS=EPSG%3A4326&BBOX=-90.75%2C29.25%2C-87.25%2C32.05&WIDTH=256&HEIGHT=204&FORMAT=image%2Fpng&TRANSPARENT=TRUE&TIME=2024-04-10T14%3A30%3A00Z"
+        },
+        {
+          "file": "gulf-5.png",
+          "at": "2024-04-10T15:00:00Z",
+          "url": "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q-t.cgi?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=nexrad-n0q-wmst&STYLES=&SRS=EPSG%3A4326&BBOX=-90.75%2C29.25%2C-87.25%2C32.05&WIDTH=256&HEIGHT=204&FORMAT=image%2Fpng&TRANSPARENT=TRUE&TIME=2024-04-10T15%3A00%3A00Z"
+        },
+        {
+          "file": "gulf-6.png",
+          "at": "2024-04-10T15:30:00Z",
+          "url": "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q-t.cgi?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=nexrad-n0q-wmst&STYLES=&SRS=EPSG%3A4326&BBOX=-90.75%2C29.25%2C-87.25%2C32.05&WIDTH=256&HEIGHT=204&FORMAT=image%2Fpng&TRANSPARENT=TRUE&TIME=2024-04-10T15%3A30%3A00Z"
+        }
+      ]
+    }
+  }
 }

@@ -1,12 +1,13 @@
 import { paint, inspect } from "./art.mjs";
 import { targets, validateSignal, validateMarks } from "./signals.js";
-import { archive, latest, metadata } from "./radar.js";
+import { radarModes, radarRegions, radarSettings, radarStyles, setupRadar } from "./radar.js";
 import { setupConsole } from "./workbench.js";
 import { setupMusic } from "./music.js";
 import { dataExplorer } from "./explorer.js";
 import { setupJobs, jobMetrics, jobStatus } from "./jobs.js";
 import { setupComposer } from "./composer.js";
 import { setupAmbient } from "./ambient.js";
+import { profileTraffic } from "./traffic-counts.js";
 
 const $ = (id) => document.getElementById(id);
 const sceneDefs = {
@@ -20,6 +21,8 @@ const sceneDefs = {
   calendar: ["Calendar Orrery", "Next 24 hours", "◴"],
   feedback: ["Patch Feedback", "Live sketch", "⟲"],
   music: ["Music Visualizer", "Audio", "♫"],
+  "traffic-counts": ["Traffic Patterns", "Hourly traffic counts", "≋"],
+  terrain: ["Terrain Profiles", "Measured elevation", "⌁"],
 };
 const state = {
   scene: "clock",
@@ -51,13 +54,7 @@ let speedName = "",
   selectedJob = "",
   calendarSource = "Example schedule",
   calendarAnchor = 0;
-let radarMode = "archive",
-  radarIndex = 0,
-  radarEpoch = 0,
-  radarError = "",
-  radarPlaying = false,
-  radarLoading = false,
-  radarSelection = null;
+let radarIndex = null, radarPlaying = false, radarSelection = null;
 let paused = matchMedia("(prefers-reduced-motion: reduce)").matches,
   relativePhase = 0,
   reduce = matchMedia("(prefers-reduced-motion: reduce)");
@@ -66,7 +63,6 @@ let raf = 0,
   previous = null,
   due = 0,
   lastReadout = 0,
-  lastWall = 0,
   audio = null,
   osc = null,
   gain = null,
@@ -100,6 +96,8 @@ const getStored = (key, def) => {
 };
 const store = (key, value) =>
   localStorage.setItem("phase-deck-" + key, JSON.stringify(value));
+let radarPreference = radarSettings(getStored("radar", null));
+
 function elt(tag, text, cls) {
   const n = document.createElement(tag);
   if (text !== undefined) n.textContent = text;
@@ -159,7 +157,10 @@ function showError(error) {
 }
 $("panel-close").onclick = () => $("panel").close();
 function download(name, text) {
-  const url = URL.createObjectURL(new Blob([text], { type: "text/plain" })),
+  downloadBlob(name, new Blob([text], { type: "text/plain" }));
+}
+function downloadBlob(name, blob) {
+  const url = URL.createObjectURL(blob),
     a = elt("a");
   a.href = url;
   a.download = name;
@@ -454,6 +455,7 @@ async function connect() {
     native = true;
     jobSnapshot(result);
     $("connection").textContent = "Mac companion · local";
+    $("google-traffic").href = "https://jossammil.github.io/phaseduck/traffic.html";
     updateReadout();
     if (!jobTimer) {
       jobTimer = setInterval(() => {
@@ -533,48 +535,188 @@ async function importCalendar() {
   updateReadout();
   draw();
 }
-async function loadRadar() {
-  const epoch = ++radarEpoch;
-  if (radarMode === "live") lastWall = Date.now();
-  radarLoading = true;
-  radarSelection = null;
-  try {
-    const r = radarMode === "live" ? await latest() : await archive(radarIndex);
-    if (epoch !== radarEpoch) return;
-    state.radar = r;
-    radarError = "";
-  } catch (e) {
-    if (epoch !== radarEpoch) return;
-    radarError = "Source unavailable · " + e.message;
-  } finally {
-    if (epoch === radarEpoch) {
-      radarLoading = false;
-      updateReadout();
-      draw();
-    }
-  }
+function radarState(preference = radarPreference, index = radarIndex) {
+  const entry = radar.get(preference);
+  const selected = index == null
+    ? (preference.mode === "live" ? entry.frames.length - 1 : 0)
+    : Math.min(index, entry.frames.length - 1);
+  const frame = entry.frames[selected];
+  const latest = entry.frames.at(-1);
+  const replay = preference.mode === "live" && frame && frame !== latest;
+  return {
+    radar: frame, radarStyle: preference.style,
+    radarTrail: entry.frames.slice(Math.max(0, selected - 3), selected),
+    radarSource: replay ? "Recent replay" : frame?.source,
+    radarError: entry.error,
+    radarStale: preference.mode === "live" && !!latest &&
+      (!!entry.error || Date.now() - Date.parse(latest.at) > 15 * 60000),
+  };
 }
-function radarOriginal() {
-  if (!state.radar) throw Error("No observation loaded yet.");
+function refreshRadar(force = false) {
+  if (composer.active()) {
+    for (const layer of composer.visibleLayers("rain")) radar.refresh(radarSettings(layer.weather), force);
+  } else if (state.scene === "rain") radar.refresh(radarPreference, force);
+}
+function changeRadar(key, value) {
+  radarPreference = radarSettings({ ...radarPreference, [key]: value });
+  store("radar", radarPreference);
+  if (key !== "style") {
+    radarPlaying = false;
+    radarIndex = null;
+    radarSelection = null;
+  }
+  refreshRadar();
+  controlBar();
+  updateReadout();
+  draw();
+}
+function stepRadar(amount) {
+  const frames = radar.get(radarPreference).frames;
+  if (!frames.length) return;
+  const current = radarIndex ?? (radarPreference.mode === "live" ? frames.length - 1 : 0);
+  radarIndex = (current + amount + frames.length) % frames.length;
+  radarSelection = null;
+  updateReadout();
+  draw();
+}
+function radarOriginal(frame = radarState().radar, cell) {
+  if (!frame) throw Error("No observation loaded yet.");
   const img = elt("img");
-  img.src = state.radar.raw;
-  img.alt =
-    "Original north-up IEM base-reflectivity mosaic around Jackson, Mississippi";
+  img.src = frame.raw;
+  img.alt = "Original north-up IEM reflectivity mosaic · " + frame.region;
   img.className = "radar-original";
   const a = elt("a", "IEM source frame");
-  a.href = state.radar.url;
+  a.href = frame.url;
   a.target = "_blank";
   a.rel = "noopener noreferrer";
   modal("Observed radar", [
-    img,
-    elt("p", state.radar.at + " · North up · Jackson region"),
-    a,
-    elt(
-      "p",
-      "Transparent areas indicate no visible echoes or unknown coverage. The abstract view uses each cell’s peak palette-matched reflectivity.",
-      "hint",
-    ),
+    img, elt("p", frame.at + " · North up · " + frame.region), a,
+    ...(cell ? [elt("p", cell.dbz === null ? "No visible echo · coverage unknown" : cell.dbz + " dBZ peak")] : []),
+    elt("p", "Transparent areas indicate no visible echoes or unknown coverage. Each display cell uses its peak palette-matched reflectivity in dBZ.", "hint"),
   ]);
+}
+const artworkAssets = {
+  terrain: "./data/natchez-terrain.json",
+  "traffic-counts": "./data/traffic-patterns.json",
+};
+const artworkDownloads = new Map();
+let bundledTraffic;
+let trafficSelection = "";
+function loadArtwork(scene) {
+  if (!Object.hasOwn(artworkAssets, scene) || artworkDownloads.has(scene)) return;
+  artworkDownloads.set(scene, fetch(artworkAssets[scene])
+    .then((response) => {
+      if (!response.ok) throw Error("The bundled source could not be opened.");
+      return response.json();
+    }).then((data) => {
+      if (scene === "terrain") state.terrain = data;
+      else {
+        bundledTraffic = data;
+        state.traffic ??= data;
+      }
+      updateReadout();
+      draw();
+    }).catch((error) => {
+      artworkDownloads.delete(scene);
+      if (state.scene === scene) showError(error);
+    }));
+}
+function citationLink(url, name) {
+  const link = elt("a", name);
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  return link;
+}
+function trafficDetails(profile = state.traffic) {
+  if (!profile) throw Error("Choose a traffic counts CSV.");
+  const items = [
+    elt("p", profile.station + " · " + profile.first + " to " + profile.last),
+    elt("p", "Each curve represents the hourly median of observed vehicles for weekdays or weekends. Gaps represent absent observations."),
+    elt("p", "Import one station using the CSV columns station_id, date, hour, and vehicles.", "hint"),
+  ];
+  if (profile.url) items.push(citationLink(profile.url, profile.source));
+  else items.push(elt("p", profile.source));
+  if (profile.sample) items.push(citationLink(new URL(profile.sample, document.baseURI).href, "Open the sample CSV"));
+  modal("Traffic counts source", items);
+}
+function trafficValues({ hour, weekday, weekend }) {
+  const read = (value) => value === null ? "Unavailable" : value.toLocaleString();
+  return String(hour).padStart(2, "0") + ":00 · Weekday " + read(weekday) +
+    " · Weekend " + read(weekend) + " vehicles/h";
+}
+async function importTraffic() {
+  const file = await choose(".csv");
+  if (!file) return;
+  const db = await import("./database.js");
+  const rows = await db.hourlyTrafficRows(file);
+  state.traffic = profileTraffic(rows, { source: file.name });
+  trafficSelection = "";
+  updateReadout();
+  draw();
+}
+function terrainDetails() {
+  const data = state.terrain;
+  if (!data) throw Error("Elevation is still loading.");
+  modal("Elevation source", [
+    elt("p", data.name),
+    elt("p", "West-to-east ground elevation sampled from north to south. Profiles use the same elevation scale in metres."),
+    citationLink("https://www.usgs.gov/3d-elevation-program/", "USGS 3DEP"),
+    citationLink(data.url, "Original elevation GeoTIFF"),
+  ]);
+}
+function sourceCaption(source) {
+  if (source.scene === "rain" && source.radar)
+    return "IEM NEXRAD · " + source.radar.region + " · " + source.radar.at +
+      (source.radarStale ? " · Stale" : " · " + source.radarSource);
+  if (source.scene === "traffic-counts" && source.traffic) {
+    const profile = source.traffic;
+    return profile.source + " · " + profile.station + " · " + profile.first + " to " + profile.last + " · Vehicles/h";
+  }
+  if (source.scene === "terrain" && source.terrain)
+    return "USGS 3DEP · " + source.terrain.name + " · Ground elevation";
+  return "";
+}
+function exportStill() {
+  const caption = elt("input");
+  caption.type = "checkbox";
+  caption.checked = true;
+  const orientation = picker([["landscape", "Landscape · 3840 × 2160"], ["portrait", "Portrait · 2160 × 3840"]],
+    "landscape", () => {}, "Export orientation");
+  const action = button("Download PNG", async () => {
+    const portrait = orientation.value === "portrait";
+    const canvas = elt("canvas");
+    canvas.width = portrait ? 2160 : 3840;
+    canvas.height = portrait ? 3840 : 2160;
+    const output = canvas.getContext("2d", { alpha: false });
+    const { width, height } = canvas;
+    output.fillStyle = "#080d16";
+    output.fillRect(0, 0, width, height);
+    const title = composer.title() || sceneDefs[state.scene][0];
+    let credits;
+    if (composer.active()) credits = composer.paintStill(output, width, height);
+    else {
+      const snapshot = state.scene === "rain" ? { ...state, ...radarState() } : state;
+      if (state.scene === "feedback" && stage.width) output.drawImage(stage, 0, 0, width, height);
+      else paint(output, width, height, snapshot);
+      credits = [sourceCaption(snapshot)].filter(Boolean);
+    }
+    if (caption.checked) {
+      const lines = [title, ...new Set(credits)];
+      const footer = 42 * lines.length + 50;
+      output.fillStyle = "#070b13e8";
+      output.fillRect(0, height - footer, width, footer);
+      lines.forEach((line, index) => {
+        output.fillStyle = index ? "#b8c9d5" : "#eaf5fa";
+        output.font = `${index ? 400 : 600} ${index ? 28 : 34}px system-ui`;
+        output.fillText(line, 56, height - footer + 43 + index * 42, width - 112);
+      });
+    }
+    const file = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!file) throw Error("Could not encode the still image.");
+    downloadBlob((title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "phase-deck") + ".png", file);
+  });
+  modal("Export 4K still", [orientation, label("Include source captions", caption), action]);
 }
 function controlBar() {
   const list = [];
@@ -590,41 +732,28 @@ function controlBar() {
     );
   if (state.scene === "rain") {
     list.push(
-      picker(
-        [
-          ["archive", "Storm archive"],
-          ["live", "Latest observation"],
-        ],
-        radarMode,
-        (v) => {
-          radarMode = v;
-          radarPlaying = false;
-          controlBar();
-          loadRadar();
-        },
-        "Radar source",
-      ),
+      picker(radarRegions, radarPreference.region, (value) => changeRadar("region", value), "Radar region"),
+      picker(radarModes, radarPreference.mode, (value) => changeRadar("mode", value), "Radar source"),
+      picker(radarStyles, radarPreference.style, (value) => changeRadar("style", value), "Radar style"),
+      button("Previous", () => stepRadar(-1)),
+      button(radarPlaying ? "Stop replay" : "Replay storm", () => {
+        radarPlaying = !radarPlaying;
+        radarIndex = radarPlaying ? 0 : null;
+        radarSelection = null;
+        controlBar();
+        updateReadout();
+        draw();
+      }),
+      button("Next", () => stepRadar(1)),
+      button("Source frame", () => radarOriginal()),
     );
-    if (radarMode === "archive") {
-      list.push(
-        button("Previous", () => {
-          radarIndex = (radarIndex + 5) % 6;
-          loadRadar();
-        }),
-        button(radarPlaying ? "Stop replay" : "Replay storm", () => {
-          radarPlaying = !radarPlaying;
-          controlBar();
-        }),
-        button("Next", () => {
-          radarIndex = (radarIndex + 1) % 6;
-          loadRadar();
-        }),
-      );
-    } else list.push(button("Refresh", loadRadar));
-    list.push(
-      button("Source frame", radarOriginal),
-      tip("North up · Jackson, MS"),
-    );
+    if (radarPreference.mode === "live")
+      list.push(button("Refresh", () => {
+        radarIndex = null;
+        radarPlaying = false;
+        refreshRadar(true);
+        controlBar();
+      }));
   }
   if (state.scene === "loom")
     list.push(
@@ -661,6 +790,18 @@ function controlBar() {
     );
   if (state.scene === "music")
     list.push(button("Music input", music.controls));
+  if (state.scene === "traffic-counts") list.push(
+    button("Open hourly counts CSV", importTraffic),
+    button("Use bundled counts", () => {
+      state.traffic = bundledTraffic;
+      trafficSelection = "";
+      loadArtwork("traffic-counts");
+      updateReadout();
+      draw();
+    }),
+    button("Source details", () => trafficDetails()),
+  );
+  if (state.scene === "terrain") list.push(button("Source details", terrainDetails));
   if (state.scene === "feedback")
     list.push(
       button("Edit sketch", () => workbench.edit("shell.py")),
@@ -697,6 +838,7 @@ function controlBar() {
 }
 function setScene(id) {
   radarSelection = null;
+  if (id !== "rain") radarPlaying = false;
   if (!Object.hasOwn(sceneDefs, id))
     throw Error("Choose one of " + Object.keys(sceneDefs).join(", "));
   composer.leave();
@@ -710,7 +852,8 @@ function setScene(id) {
   controlBar();
   updateReadout();
   draw();
-  if (id === "rain" && !state.radar && !radarLoading) loadRadar();
+  if (id === "rain") refreshRadar();
+  loadArtwork(id);
 }
 function activeJobs() {
   return state.jobs.filter((j) =>
@@ -740,22 +883,14 @@ function updateReadout() {
     }
   }
   if (scene === "rain") {
-    const r = state.radar,
-      old =
-        r?.source === "Live observation" &&
-        Date.now() - Date.parse(r.at) > 15 * 60000;
-    text =
-      radarError ||
-      (radarLoading
-        ? "Loading observation"
-        : r
-          ? r.source + (old ? " · stale" : "")
-          : "Loading radar");
-    sub = r
-      ? (radarError || radarLoading ? r.source + " · " : "") +
-        r.at.replace("T", " ").replace(/\.000Z|Z$/, " UTC") +
-        (radarSelection ? " · " + radarSelection : "")
-      : "";
+    const current = radarState();
+    const frame = current.radar;
+    text = current.radarError
+      ? "Source unavailable" + (frame ? " · stale" : "")
+      : frame ? current.radarSource + (current.radarStale ? " · stale" : "") : "Loading observation";
+    if (frame) sub = [frame.region, radarSelection,
+      frame.at.replace("T", " ").replace(/\.000Z|Z$/, " UTC")].filter(Boolean).join(" · ");
+    else if (current.radarError) sub = current.radarError;
   }
   if (scene === "calendar") {
     const upcoming = state.events.filter(
@@ -780,6 +915,15 @@ function updateReadout() {
   if (scene === "music") {
     text = music.statusFor(music.settings.source);
     sub = "";
+  }
+  if (scene === "traffic-counts") {
+    text = state.traffic?.station || "Choose an hourly counts CSV";
+    sub = trafficSelection || (state.traffic ? state.traffic.first + " to " + state.traffic.last +
+      " · Median vehicles per hour" : "Local date and hour · One station per file");
+  }
+  if (scene === "terrain") {
+    text = state.terrain?.name || "Loading elevation profiles";
+    sub = "USGS 3DEP · Ground elevation";
   }
   if (["orbit", "silk", "dunes", "feedback"].includes(scene)) {
     text =
@@ -821,6 +965,8 @@ function draw() {
   if (!w || !ctx) return;
   syncAudio();
   state.music = music.settings;
+  state.audioHistory = music.history;
+  if (state.scene === "rain") Object.assign(state, radarState());
   if (!paused && (state.scene === "music" || composer.has("music"))) state.audioFrames = music.read();
   if (composer.active()) {
     composer.paint(w, h);
@@ -971,6 +1117,7 @@ const ui = {
   close: () => $("panel").close(),
   isPanel: (title) => $("panel").open && $("panel-title").textContent === title,
 };
+const radar = setupRadar(() => { updateReadout(); draw(); });
 const music = setupMusic(ui, api, async () => { if (audio) await toggleAudio(); });
 const jobPanel = setupJobs(ui, {
   api, connected: () => native, workspace: () => workspace,
@@ -997,24 +1144,30 @@ const composer = setupComposer(ui, {
   stack: $("layers"), tools: $("composition-editor"), music, sceneDefs,
   signals: () => signals, jobs: () => state.jobs,
   connectionError: () => lastNativeError, display: () => ambient.display,
+  caption: sourceCaption,
   favorite: (item) => ambient.addFavorite(item),
   exit: () => setScene(state.scene), explore: explorer.open, redraw: draw,
   initial: (make) => make(state.scene, true, {
     patch: targets[state.patch] === state.scene ? state.patch : "",
     source: targets[state.patch] === state.scene ? patchName : "",
     signal: targets[state.patch] === state.scene ? signals[patchName] : null,
-    sketch: state.sketch,
+    sketch: state.sketch, weather: state.scene === "rain" ? { ...radarPreference } : undefined,
+    traffic: state.scene === "traffic-counts" ? state.traffic : undefined,
   }),
   layerState(layer) {
     const signal = layer.source === "download_rate" ? signals.download_rate || layer.signal : layer.signal;
     return { ...state, scene: layer.kind, patch: layer.patch, signal: signal?.values || [],
-      sketch: layer.sketch || (layer.kind === "feedback" ? state.sketch : []), music: layer.music };
+      sketch: layer.sketch || (layer.kind === "feedback" ? state.sketch : []), music: layer.music,
+      sceneLayer: true,
+      traffic: layer.kind === "traffic-counts" ? layer.traffic || bundledTraffic : undefined,
+      ...(layer.kind === "rain" ? radarState(radarSettings(layer.weather), null) : {}) };
   },
   inspect(layer, data) {
     let text;
     if (layer.kind === "loom") text = data.date + " at " + data.hour + ":00 · " + data.value.toLocaleString() + " pickups";
     if (layer.kind === "dunes") text = "Value " + (data.hour + 1) + " · " + data.value + " " + (layer.signal?.unit || "");
-    if (layer.kind === "rain") text = data.value == null ? "No visible echo" : data.value + " dBZ peak";
+    if (layer.kind === "rain") return radarOriginal(radarState(radarSettings(layer.weather), null).radar, data);
+    if (layer.kind === "traffic-counts") return modal("Hourly traffic counts", [elt("p", trafficValues(data))]);
     if (layer.kind === "jobs") text = [data.job.label, jobStatus(data.job.status), ...jobMetrics(data.job)].join(" · ");
     if (layer.kind === "calendar") text = new Date(data.event.start).toLocaleString() + " – " + new Date(data.event.end).toLocaleString();
     if (text) modal(sceneDefs[layer.kind][0], [elt("p", text)]);
@@ -1028,7 +1181,8 @@ const composer = setupComposer(ui, {
       $("category").textContent = "Composition";
       $("instrument-controls").hidden = true;
       for (const item of $("library").children) item.setAttribute("aria-current", "false");
-      if (composer.has("rain") && !state.radar && !radarLoading && !radarError) loadRadar();
+      refreshRadar();
+      for (const id of Object.keys(artworkAssets)) if (composer.has(id)) loadArtwork(id);
     }
     draw();
     updateReadout();
@@ -1072,6 +1226,7 @@ $("jobs-button").onclick = jobPanel.open;
 $("explore-button").onclick = explorer.open;
 $("compose-button").onclick = composer.start;
 $("ambient-button").onclick = ambient.configure;
+$("export-button").onclick = exportStill;
 function focusMode() {
   const f = document.body.classList.toggle("focus");
   $("unfocus").hidden = !f;
@@ -1095,13 +1250,13 @@ stage.onclick = (e) => {
     state.selectedHour = data.hour;
   }
   if (state.scene === "rain") {
-    const value = state.radar.levels[data.row * state.radar.cols + data.col];
     radarSelection =
-      value === null
+      data.dbz === null
         ? "No visible echo · coverage unknown"
-        : value + " dBZ peak";
+        : data.dbz + " dBZ peak";
   }
   if (state.scene === "jobs") selectedJob = data.job.id;
+  if (state.scene === "traffic-counts") trafficSelection = trafficValues(data);
   if (state.scene === "dunes")
     radarSelection =
       "Bin " + data.hour + " · " + data.value + " " + signals[patchName]?.unit;
@@ -1166,15 +1321,9 @@ setInterval(() => {
     updateReadout();
     if (["calendar", "clock"].includes(state.scene) || composer.active()) draw();
   }
-  if ((composer.active() ? composer.has("rain") : state.scene === "rain") && !radarLoading) {
-    if (radarPlaying && radarMode === "archive") {
-      radarIndex = (radarIndex + 1) % 6;
-      loadRadar();
-    } else if (radarMode === "live" && Date.now() - lastWall >= 300000) {
-      lastWall = Date.now();
-      loadRadar();
-    }
-  }
+  refreshRadar();
+  if (!composer.active() && state.scene === "rain" && radarPlaying && !paused) stepRadar(1);
+
 }, 1800);
 fetch("./data/days.json")
   .then((r) => r.json())
